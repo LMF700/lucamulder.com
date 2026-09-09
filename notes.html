@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Notes</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='notesstyle.css') }}">
+</head>
+
+<body>
+    <button id="sidebarToggle">☰</button>
+
+    <div id="sidebar">
+
+        <button id="new">New Note</button>
+
+        <button id="lightMode" class="themeButton">
+            <span class="sunIcon"></span>
+        </button>
+
+        <button id="twilightMode" class="themeButton">
+            <span class="moonIcon"></span>
+        </button>
+
+        <div id="noteList">
+
+        </div>
+
+    </div>
+
+
+    <div id="editorContainer">
+
+        <div id="noNote">
+            <p class="big">No note has been selected.</p>
+            <p>Select a note from the sidebar or create a new one.</p>
+        </div>
+
+
+        <div id="editor" style="display: none;">
+
+            <input
+                id="title"
+                placeholder="Title">
+
+
+            <br><br>
+
+
+            <div id="formatButtons">
+
+                <button id="bold">
+                    <b>B</b>
+                </button>
+
+                <button id="italic">
+                    <i>I</i>
+                </button>
+
+            </div>
+
+
+            <div
+                id="body"
+                contenteditable="true"
+                role="textbox"
+                aria-multiline="true"
+                data-placeholder="Write your note...">
+            </div>
+
+
+            <br><br>
+
+
+            <button id="save">
+                Save
+            </button>
+
+            <button id="delete">
+                Delete
+            </button>
+
+
+        </div>
+
+    </div>
+
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+
+</body>
+
+</html>
