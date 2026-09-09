@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Luca Mulder</title>
+  <meta name="description" content="Projects, games, code and things I'm learning.">
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #080b10;
+      --panel: #0e131b;
+      --text: #f5f7fa;
+      --muted: #8994a3;
+      --accent: #53f5c4;
+      --line: #202936;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Courier New", Courier, monospace;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* subtle background grid */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(83,245,196,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(83,245,196,.025) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .container {
+      width: min(1050px, 88%);
+      margin: auto;
+    }
+
+    /* navigation */
+
+    nav {
+      height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .logo {
+      font-weight: bold;
+      font-size: 1rem;
+      letter-spacing: -0.5px;
+    }
+
+    .logo span {
+      color: var(--accent);
+    }
+
+    nav ul {
+      display: flex;
+      list-style: none;
+      gap: 28px;
+    }
+
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: .85rem;
+      transition: .2s;
+    }
+
+    nav a:hover {
+      color: var(--accent);
+    }
+
+    /* hero */
+
+    .hero {
+      min-height: calc(100vh - 80px);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 80px 0;
+    }
+
+    .boot {
+      color: var(--accent);
+      font-size: .85rem;
+      margin-bottom: 30px;
+      opacity: 0;
+      animation: appear .7s forwards .2s;
+    }
+
+    h1 {
+      font-size: clamp(3rem, 9vw, 7.5rem);
+      line-height: .95;
+      letter-spacing: -5px;
+      margin-bottom: 35px;
+      opacity: 0;
+      animation: appear .8s forwards .8s;
+    }
+
+    .intro {
+      max-width: 680px;
+      color: var(--muted);
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: clamp(1.05rem, 2vw, 1.35rem);
+      line-height: 1.7;
+      opacity: 0;
+      animation: appear .8s forwards 1.3s;
+    }
+
+    .intro strong {
+      color: var(--text);
+    }
+
+    .cursor {
+      display: inline-block;
+      width: 11px;
+      height: 1.15em;
+      background: var(--accent);
+      vertical-align: -2px;
+      margin-left: 5px;
+      animation: blink 1s steps(1) infinite;
+    }
+
+    .scroll {
+      margin-top: 55px;
+      color: var(--muted);
+      font-size: .8rem;
+      opacity: 0;
+      animation: appear .8s forwards 1.8s;
+    }
+
+    .scroll span {
+      color: var(--accent);
+    }
+
+    /* content */
+
+    section {
+      padding: 110px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .section-number {
+      color: var(--accent);
+      font-size: .75rem;
+      margin-bottom: 15px;
+    }
+
+    h2 {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      margin-bottom: 50px;
+      letter-spacing: -2px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    .card {
+      min-height: 230px;
+      padding: 28px;
+      border: 1px solid var(--line);
+      background: rgba(14, 19, 27, .75);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform .2s, border-color .2s;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      border-color: var(--accent);
+    }
+
+    .card-icon {
+      font-size: 1.4rem;
+      color: var(--accent);
+    }
+
+    .card h3 {
+      margin-bottom: 8px;
+      font-size: 1.05rem;
+    }
+
+    .card p {
+      color: var(--muted);
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: .9rem;
+      line-height: 1.5;
+    }
+
+    .status {
+      color: var(--accent);
+      font-size: .7rem;
+      margin-top: 20px;
+    }
+
+    /* message */
+
+    .message {
+      max-width: 720px;
+    }
+
+    .message p {
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--muted);
+      font-size: 1.15rem;
+      line-height: 1.8;
+      margin-bottom: 20px;
+    }
+
+    .message strong {
+      color: var(--text);
+    }
+
+    .signature {
+      margin-top: 45px;
+      color: var(--text) !important;
+      font-family: "Courier New", monospace !important;
+    }
+
+    footer {
+      border-top: 1px solid var(--line);
+      padding: 35px 0;
+      color: var(--muted);
+      font-size: .7rem;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    footer span {
+      color: var(--accent);
+    }
+
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
+
+    @keyframes appear {
+      from {
+        opacity: 0;
+        transform: translateY(15px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (max-width: 700px) {
+      nav ul {
+        display: none;
+      }
+
+      h1 {
+        letter-spacing: -3px;
+      }
+
+      .cards {
+        grid-template-columns: 1fr;
+      }
+
+      section {
+        padding: 80px 0;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+
+    <nav>
+      <div class="logo"><span>&gt;</span> lucamulder.com</div>
+
+      <ul>
+        <li><a href="#projects">projects</a></li>
+        <li><a href="#learning">learning</a></li>
+        <li><a href="#hello">hello</a></li>
+      </ul>
+    </nav>
+
+
+    <main>
+
+      <div class="hero">
+
+        <div class="boot">
+          &gt; system initialized_ <br>
+          &gt; lucamulder.com is online
+        </div>
+
+        <h1>
+          HELLO,<br>
+          LUCA.
+        </h1>
+
+        <div class="intro">
+          This is <strong>your corner of the internet.</strong><br><br>
+
+          A place for the things you build, the games you create,
+          the Python you learn and whatever comes next.<span class="cursor"></span>
+        </div>
+
+        <div class="scroll">
+          <span>↓</span> start exploring
+        </div>
+
+      </div>
+
+
+      <section id="projects">
+
+        <div class="section-number">01 / BUILD</div>
+        <h2>Things you'll make.</h2>
+
+        <div class="cards">
+
+          <div class="card">
+            <div class="card-icon">&lt;/&gt;</div>
+
+            <div>
+              <h3>Projects</h3>
+              <p>
+                Experiments, ideas and things built with code.
+              </p>
+              <div class="status">STATUS: waiting for first project_</div>
+            </div>
+          </div>
+
+
+          <div class="card">
+            <div class="card-icon">▶</div>
+
+            <div>
+              <h3>Games</h3>
+              <p>
+                Games created, tested, broken and hopefully fixed again.
+              </p>
+              <div class="status">PLAYER 1: READY_</div>
+            </div>
+          </div>
+
+
+          <div class="card" id="learning">
+            <div class="card-icon">🐍</div>
+
+            <div>
+              <h3>Learning</h3>
+              <p>
+                Code, experiments and new things worth remembering.
+              </p>
+              <div class="status">CURRENTLY: PYTHON_</div>
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <section id="hello">
+
+        <div class="section-number">02 / THE BEGINNING</div>
+        <h2>Everything starts empty.</h2>
+
+        <div class="message">
+
+          <p>
+            Luca, right now there's almost nothing here.
+          </p>
+
+          <p>
+            <strong>That's the point.</strong>
+          </p>
+
+          <p>
+            Over time this can become a place for your projects,
+            your games, your experiments and everything you learn
+            along the way.
+          </p>
+
+          <p>
+            Make things. Break things. Figure out why they broke.
+            And then make them better.
+          </p>
+
+          <p>
+            Most importantly: make this place <strong>yours.</strong>
+          </p>
+
+          <p class="signature">
+            Have fun building it.<br>
+            — Dad ❤️
+          </p>
+
+        </div>
+
+      </section>
+
+    </main>
+
+
+    <footer>
+      <div>lucamulder.com</div>
+      <div><span>●</span> ONLINE</div>
+    </footer>
+
+  </div>
+
+</body>
+</html>
