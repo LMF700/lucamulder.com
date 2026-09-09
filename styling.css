@@ -5,33 +5,34 @@
 }
 
 .card {
-  --card-accent: var(--accent);
+  --card-color: #a855f7;
 
   position: relative;
   min-height: 230px;
   padding: 28px;
 
+  /* Colored glass */
   background:
     linear-gradient(
       135deg,
-      color-mix(in srgb, var(--card-accent) 8%, transparent),
-      rgba(14, 19, 27, .45)
+      color-mix(in srgb, var(--card-color) 18%, transparent),
+      color-mix(in srgb, var(--card-color) 5%, rgba(10, 8, 15, .7))
     );
 
   border: 1px solid color-mix(
     in srgb,
-    var(--card-accent) 35%,
-    var(--line)
+    var(--card-color) 45%,
+    transparent
   );
 
   border-radius: 16px;
 
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
 
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .04),
-    0 10px 35px rgba(0, 0, 0, .25);
+    inset 0 1px 1px rgba(255, 255, 255, .08),
+    0 15px 40px rgba(0, 0, 0, .3);
 
   display: flex;
   flex-direction: column;
@@ -45,24 +46,27 @@
     box-shadow .25s ease;
 }
 
-/* Accent glow */
+/* Colored glow inside the glass */
 .card::before {
   content: "";
   position: absolute;
-  top: -80px;
-  left: -80px;
 
   width: 180px;
   height: 180px;
 
-  background: var(--card-accent);
-  opacity: .08;
+  top: -80px;
+  left: -60px;
 
-  filter: blur(45px);
+  background: var(--card-color);
+  opacity: .18;
+
+  filter: blur(55px);
+  border-radius: 50%;
+
   pointer-events: none;
 }
 
-/* Accent line */
+/* Little accent bar */
 .card::after {
   content: "";
 
@@ -73,33 +77,29 @@
 
   height: 2px;
 
-  background: var(--card-accent);
+  background: var(--card-color);
 
-  opacity: .7;
-
-  box-shadow:
-    0 0 12px var(--card-accent);
-
-  border-radius: 0 0 4px 4px;
+  box-shadow: 0 0 15px var(--card-color);
 }
 
 .card:hover {
   transform: translateY(-6px);
 
-  border-color: var(--card-accent);
+  border-color: var(--card-color);
 
   box-shadow:
-    0 15px 45px rgba(0, 0, 0, .35),
-    0 0 25px color-mix(
+    inset 0 1px 1px rgba(255, 255, 255, .1),
+    0 20px 50px rgba(0, 0, 0, .4),
+    0 0 30px color-mix(
       in srgb,
-      var(--card-accent) 12%,
+      var(--card-color) 18%,
       transparent
     );
 }
 
 .card-icon {
   font-size: 1.4rem;
-  color: var(--card-accent);
+  color: var(--card-color);
 }
 
 .card h3 {
@@ -115,7 +115,7 @@
 }
 
 .status {
-  color: var(--card-accent);
+  color: var(--card-color);
   font-size: .7rem;
   margin-top: 20px;
 }
