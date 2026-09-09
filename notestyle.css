@@ -1,0 +1,538 @@
+html {
+    height: 100%;
+}
+
+
+:root {
+    --button-bg: #eeeeee;
+    --moon-color: #7777aa;
+}
+
+
+body.dark {
+    --button-bg: #333333;
+    --moon-color: #ddddff;
+}
+
+
+body.twilight {
+    --button-bg: #33264d;
+    --moon-color: #cfcfff;
+}
+
+
+body {
+    margin: 0;
+    display: flex;
+    height: 100vh;
+    font-family: Verdana;
+}
+
+
+/* Sidebar */
+
+#sidebar {
+
+    height: 100vh;
+    width: 250px;
+
+    display: flex;
+    flex-direction: column;
+
+    padding: 15px;
+
+    box-sizing: border-box;
+
+    border-right: 1px solid #ccc;
+
+    transition: transform 0.3s ease;
+
+}
+
+
+#sidebar.hidden {
+
+    transform: translateX(-100%);
+
+}
+
+
+#noteList {
+
+    flex: 1;
+
+    overflow-y: auto;
+
+    margin-top: 15px;
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 8px;
+
+}
+
+
+
+/* Editor */
+
+#editorContainer {
+
+    flex: 1;
+
+    height: 100vh;
+
+    padding: 20px;
+
+    box-sizing: border-box;
+
+    display: flex;
+
+    flex-direction: column;
+
+}
+
+
+#editor {
+
+    flex: 1;
+
+    display: flex;
+
+    flex-direction: column;
+
+    padding: 20px;
+
+    box-sizing: border-box;
+
+}
+
+
+
+/* Empty state */
+
+#noNote {
+
+    padding: 20px;
+
+}
+
+
+.big {
+
+    font-size: 24px;
+
+    color: #000051;
+
+}
+
+
+#noNote p {
+
+    margin-top: 0;
+
+    color: #666;
+
+}
+
+
+
+/* Title */
+
+#title {
+
+    width: 100%;
+
+    padding: 10px;
+
+    font-size: 1.5em;
+
+    font-weight: bold;
+
+    font-family: Verdana;
+
+    box-sizing: border-box;
+
+}
+
+
+
+/* Rich editor */
+
+#body {
+
+    flex: 1;
+
+    width: 100%;
+
+    min-height: 500px;
+
+    padding: 15px;
+
+    margin-top: 15px;
+
+    font-family: Verdana;
+
+    font-size: 18px;
+
+    line-height: 1.5;
+
+    background-color: rgb(226, 226, 226);
+
+    border-radius: 8px;
+
+    border: 1px solid #ccc;
+
+    overflow-y: auto;
+
+    outline: none;
+
+    box-sizing: border-box;
+
+}
+
+
+
+/* Formatting buttons */
+
+#formatButtons {
+
+    display: flex;
+
+    gap: 8px;
+
+}
+
+
+#formatButtons button {
+
+    width: 35px;
+
+    height: 35px;
+
+    border: none;
+
+    border-radius: 8px;
+
+    cursor: pointer;
+
+}
+
+
+
+/* Notes */
+
+#noteList button {
+
+    width: 100%;
+
+    padding: 10px;
+
+    border: none;
+
+    border-radius: 8px;
+
+    background-color: #eeeeee;
+
+    text-align: left;
+
+    cursor: pointer;
+
+    font-family: Verdana;
+
+    transition: background-color 0.2s;
+
+}
+
+
+#noteList button:hover {
+
+    background-color: #dddddd;
+
+}
+
+
+
+/* Main buttons */
+
+#new {
+
+    background-color: rgb(0, 136, 255);
+
+    color: white;
+
+    border: none;
+
+    border-radius: 8px;
+
+    padding: 10px;
+
+    cursor: pointer;
+
+}
+
+
+#save {
+
+    background-color: #007604;
+
+    color: rgb(212, 255, 212);
+
+    border: none;
+
+    border-radius: 8px;
+
+    padding: 10px 16px;
+
+    cursor: pointer;
+
+}
+
+
+#delete {
+
+    background-color: #690400;
+
+    color: rgb(255, 128, 128);
+
+    border: none;
+
+    border-radius: 8px;
+
+    padding: 10px 16px;
+
+    cursor: pointer;
+
+}
+
+
+
+/* Twilight */
+
+body.twilight {
+
+    background-color: #1b1630;
+
+    color: #f0d9ff;
+
+}
+
+
+body.twilight #sidebar {
+
+    border-color: #443366;
+
+}
+
+
+body.twilight #noteList button {
+
+    background-color: #33264d;
+
+    color: #f0d9ff;
+
+}
+
+
+body.twilight #noteList button:hover {
+
+    background-color: #463461;
+
+}
+
+
+body.twilight #title,
+body.twilight #body {
+
+    background-color: #241c38;
+
+    color: #f0d9ff;
+
+}
+
+
+
+/* Theme buttons */
+
+.themeButton {
+
+    width: 40px;
+
+    height: 40px;
+
+    border: none;
+
+    border-radius: 50%;
+
+    cursor: pointer;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    background-color: var(--button-bg);
+
+    transition: transform 0.2s, background-color 0.2s;
+
+}
+
+
+.themeButton:hover {
+
+    transform: scale(1.1);
+
+}
+
+
+
+/* Sun */
+
+.sunIcon {
+
+    width: 16px;
+
+    height: 16px;
+
+    background-color: #ffaa00;
+
+    border-radius: 50%;
+
+}
+
+
+
+/* Moon */
+
+.moonIcon {
+
+    width: 18px;
+
+    height: 18px;
+
+    background-color: var(--moon-color);
+
+    border-radius: 50%;
+
+    position: relative;
+
+}
+
+
+.moonIcon::after {
+
+    content: "";
+
+    width: 16px;
+
+    height: 16px;
+
+    background-color: var(--button-bg);
+
+    border-radius: 50%;
+
+    position: absolute;
+
+    left: 7px;
+
+    top: -2px;
+
+}
+
+
+
+/* Sidebar toggle */
+
+#sidebarToggle {
+
+    position: fixed;
+
+    top: 15px;
+
+    right: 15px;
+
+    z-index: 10;
+
+    width: 40px;
+
+    height: 40px;
+
+    border: none;
+
+    border-radius: 8px;
+
+    cursor: pointer;
+
+    background-color: var(--button-bg);
+
+    font-size: 20px;
+
+}
+
+.warn {
+    font-family: Verdana;
+    font-size: 32px;
+    font-weight: bold;
+
+    background: linear-gradient(
+        90deg,
+        red,
+        yellow,
+        red
+    );
+
+    background-size: 300%;
+
+    color: transparent;
+    background-clip: text;
+    -webkit-background-clip: text;
+
+    animation: warnGradient 2s linear infinite;
+}
+
+
+.sunset {
+    font-family: Verdana;
+    font-size: 18px;
+    font-weight: normal;
+
+    background: linear-gradient(
+        90deg,
+        orange,
+        pink,
+        purple,
+        orange
+    );
+
+    background-size: 300%;
+
+    color: transparent;
+    background-clip: text;
+    -webkit-background-clip: text;
+
+    animation: sunsetGradient 5s linear infinite;
+}
+
+
+@keyframes warnGradient {
+    from {
+        background-position: 0%;
+    }
+
+    to {
+        background-position: 300%;
+    }
+}
+
+
+@keyframes sunsetGradient {
+    from {
+        background-position: 0%;
+    }
+
+    to {
+        background-position: 300%;
+    }
+}
