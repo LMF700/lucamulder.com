@@ -1,6 +1,5 @@
 let notes = [];
 let currentNote = null;
-alert("JS WORKS");
 
 // Load theme
 
