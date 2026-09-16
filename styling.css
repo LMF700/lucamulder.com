@@ -188,7 +188,7 @@ h2 {
     display: grid;
 
     grid-template-columns: repeat(6, 1fr);
-    grid-auto-rows: 120px;
+    grid-auto-rows: 300px;
 
     gap: 24px;
 }
@@ -319,7 +319,7 @@ h2 {
 .card p {
     color: var(--muted);
 
-    font-family: Arial, sans-serif;
+    font-family: Helvetica;
     line-height: 1.6;
 }
 
@@ -348,6 +348,10 @@ h2 {
     Wide + tall:
     4 columns × 2 rows
 */
+
+.card {
+    grid-column: span 2;
+}
 
 .card.wide {
     grid-column: span 4;
@@ -385,7 +389,29 @@ h2 {
 .green {
     --card-color: #22c55e;
 }
+.red {
+    --card-color: #ef4444;
+}
 
+.yellow {
+    --card-color: #eab308;
+}
+
+.lime {
+    --card-color: #84cc16;
+}
+
+.teal {
+    --card-color: #14b8a6;
+}
+
+.indigo {
+    --card-color: #6366f1;
+}
+
+.violet {
+    --card-color: #8b5cf6;
+}
 
 /* =========================
    MOBILE
@@ -414,4 +440,18 @@ h2 {
     h2 {
         font-size: 2.2rem;
     }
+}
+.sidepage {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    padding: 3rem;
+    overflow-y: auto;
+    background: #111;
+    transform: translateX(100%);
+    transition: transform 350ms ease;
+}
+
+.sidepage.is-open {
+    transform: translateX(0);
 }
