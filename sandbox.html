@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crates 'n Components</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #121218;
+            font-family: Verdana;
+            user-select: none;
+        }
+
+        /* --- TOOLBAR UI --- */
+        #toolbar {
+            position: fixed;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            background: rgba(20, 20, 28, 0.9);
+            padding: 8px 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+            z-index: 100000;
+            backdrop-filter: blur(8px);
+        }
+
+        .btn {
+            background: #2a2a38;
+            color: #fff;
+            border: 1px solid #3a3a4c;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            background: #3a3a4c;
+            border-color: #5a5a72;
+        }
+
+        .btn.active {
+            background: #3498db;
+            border-color: #2980b9;
+            color: #fff;
+        }
+
+        .btn-danger {
+            background: #c0392b;
+            border-color: #e74c3c;
+        }
+
+        .btn-danger:hover {
+            background: #e74c3c;
+        }
+
+        #status-bar {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.75);
+            color: #3498db;
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 100000;
+            border: 1px solid rgba(52, 152, 219, 0.3);
+        }
+
+        /* --- VIEWPORT & WORLD CONTAINER --- */
+        #viewport {
+            width: 100vw;
+            height: 100vh;
+            cursor: grab;
+            position: relative;
+        }
+
+        #viewport:active {
+            cursor: grabbing;
+        }
+
+        #world {
+            position: absolute;
+            width: 3000px;
+            height: 2000px;
+            top: 0;
+            left: 0;
+            background: 
+                radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px) 0 0 / 40px 40px,
+                linear-gradient(135deg, #1e1e28 0%, #121218 100%);
+            border: 4px dashed #2c3e50;
+            transform-origin: 0 0;
+        }
+
+        /* --- DYNAMIC OBJECT STYLES --- */
+        .crate {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: #8B5A2B;
+            border: 3px solid #4A2E16;
+            border-radius: 4px;
+            cursor: grab;
+            box-shadow: inset 0 0 0 2px #A06D3B, 0 4px 8px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #4A2E16;
+            font-weight: bold;
+            font-size: 22px;
+            touch-action: none;
+            z-index: 900;
+        }
+
+        .crate:active {
+            cursor: grabbing;
+        }
+
+        .pm-handle {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            z-index: 99999;
+            cursor: move;
+            box-shadow: 0 0 6px rgba(0,0,0,0.5);
+            transform: translate(-50%, -50%);
+        }
+
+        #svg-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 500;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- TOOLBAR UI -->
+    <div id="toolbar">
+        <button class="btn" onclick="setTool('crate')">Spawn Crates</button>
+        <button class="btn" onclick="setTool('conveyor')">Conveyor</button>
+        <button class="btn" onclick="setTool('vconveyor')">Verticonveyor</button>
+        <button class="btn" onclick="setTool('carriage')">Carriage Lift</button>
+        <button class="btn" onclick="setTool('sensorgate')">Sensor & Gate</button>
+        <button class="btn" onclick="setTool('portal')">Portal Pair</button>
+        <button class="btn" id="btn-edit" onclick="toggleEditMode()">Edit</button>
+        <button class="btn btn-danger" onclick="clearAll()">Clear All</button>
+    </div>
+
+    <div id="status-bar">📜 Scroll to Zoom | 🖱️ Drag background to Pan | Click a tool to build</div>
+
+    <!-- MAIN VIEWPORT -->
+    <div id="viewport">
+        <div id="world">
+            <svg id="svg-layer"></svg>
+        </div>
+    </div>
+
+    <script>
+        // Global Data Arrays
+        window.__crates = [];
+        window.__conveyors = [];
+        window.__sensorGates = [];
+        window.__carriages = [];
+        window.__portals = [];
+        window.__vConveyors = [];
+        window.__editMode = false;
+
+        const viewport = document.getElementById('viewport');
+        const world = document.getElementById('world');
+        const svgLayer = document.getElementById('svg-layer');
+        const statusBar = document.getElementById('status-bar');
+
+        let scale = 1;
+        let panX = 100;
+        let panY = 100;
+        let isPanning = false;
+        let startX = 0, startY = 0;
+        let activeTool = null;
+        let toolState = {};
+        let previewEl = null;
+
+        // Apply Viewport Pan & Zoom
+        function updateTransform() {
+            world.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+        }
+        updateTransform();
+
+        // Convert Mouse Screen Coords to World Coords
+        function getWorldCoords(e) {
+            const rect = viewport.getBoundingClientRect();
+            return {
+                x: (e.clientX - rect.left - panX) / scale,
+                y: (e.clientY - rect.top - panY) / scale
+            };
+        }
+
+        // Mouse Wheel Zooming
+        viewport.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomSensitivity = 0.0015;
+            const delta = -e.deltaY * zoomSensitivity;
+            const newScale = Math.min(Math.max(0.2, scale + delta), 3);
+
+            const rect = viewport.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            panX = mouseX - (mouseX - panX) * (newScale / scale);
+            panY = mouseY - (mouseY - panY) * (newScale / scale);
+            scale = newScale;
+
+            updateTransform();
+        }, { passive: false });
+
+        // Pan & Interactive Tool Clicks
+        viewport.addEventListener('mousedown', (e) => {
+            if (e.button === 0 && (e.target === viewport || e.target === world || e.target === svgLayer)) {
+                if (!activeTool) {
+                    isPanning = true;
+                    startX = e.clientX - panX;
+                    startY = e.clientY - panY;
+                } else {
+                    handleToolClick(getWorldCoords(e));
+                }
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (isPanning) {
+                panX = e.clientX - startX;
+                panY = e.clientY - startY;
+                updateTransform();
+            } else if (activeTool) {
+                handleToolMove(getWorldCoords(e));
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            isPanning = false;
+        });
+
+        // Set Active Tool
+        function setTool(toolName) {
+            resetToolState();
+            if (activeTool === toolName) {
+                activeTool = null;
+                statusBar.innerText = "📜 Scroll to Zoom | 🖱️ Drag background to Pan";
+            } else {
+                activeTool = toolName;
+                if (activeTool === 'crate') statusBar.innerText = "Click anywhere on the world to spawn a Crate";
+                if (activeTool === 'conveyor') statusBar.innerText = "Click to set START of conveyor";
+                if (activeTool === 'vconveyor') statusBar.innerText = "Click BOTTOM of Vertical Conveyor";
+                if (activeTool === 'carriage') statusBar.innerText = "Click BOTTOM position for Carriage Lift";
+                if (activeTool === 'sensorgate') statusBar.innerText = "Click to place SENSOR";
+                if (activeTool === 'portal') statusBar.innerText = "Click to place PORTAL A (Blue Entrance)";
+            }
+            updateToolButtons();
+        }
+
+        function updateToolButtons() {
+            document.querySelectorAll('#toolbar .btn').forEach(btn => {
+                if (btn.id !== 'btn-edit') btn.classList.remove('active');
+            });
+            if (activeTool) {
+                const b = Array.from(document.querySelectorAll('#toolbar .btn')).find(el => el.getAttribute('onclick')?.includes(activeTool));
+                if (b) b.classList.add('active');
+            }
+        }
+
+        function resetToolState() {
+            toolState = {};
+            if (previewEl) { previewEl.remove(); previewEl = null; }
+        }
+
+        // TOOL STEP-BY-STEP CREATION LOGIC
+        function handleToolClick(pos) {
+            if (activeTool === 'crate') {
+                createCrate(pos.x, pos.y);
+            } 
+            else if (activeTool === 'conveyor') {
+                if (!toolState.p1) {
+                    toolState.p1 = pos;
+                    statusBar.innerText = "Click to set END of conveyor";
+                } else {
+                    const p1 = toolState.p1, p2 = pos;
+                    const dx = p2.x - p1.x, dy = p2.y - p1.y, len = Math.hypot(dx, dy);
+                    if (len >= 20) {
+                        const ang = Math.atan2(dy, dx), tx = dx / len, ty = dy / len;
+                        const belt = document.createElement('div');
+                        belt.style.cssText = `position:absolute;left:${p1.x}px;top:${p1.y}px;width:${len}px;height:24px;background:repeating-linear-gradient(90deg,#222,#222 15px,#f5b041 15px,#f5b041 30px);background-size:60px 100%;border:2px solid #111;box-sizing:border-box;border-radius:12px;z-index:400;transform-origin:0 50%;transform:translate(0,-50%) rotate(${ang}rad);box-shadow:0 4px 10px rgba(0,0,0,0.3);`;
+
+                        let st = document.getElementById('conv-anim');
+                        if (!st) {
+                            st = document.createElement('style');
+                            st.id = 'conv-anim';
+                            st.innerHTML = '@keyframes convRun { 0% { background-position: 0 0; } 100% { background-position: 60px 0; } }';
+                            document.head.appendChild(st);
+                        }
+                        belt.style.animation = 'convRun 0.6s linear infinite';
+                        world.appendChild(belt);
+                        window.__conveyors.push({ p1, p2, len, tx, ty, speed: 8, el: belt, r: 12 });
+                    }
+                    setTool(null);
+                }
+            }
+            else if (activeTool === 'vconveyor') {
+                if (!toolState.p1) {
+                    toolState.p1 = pos;
+                    statusBar.innerText = "Click TOP of Vertical Conveyor";
+                } else {
+                    const p1 = toolState.p1, p2 = pos;
+                    const topY = Math.min(p1.y, p2.y), botY = Math.max(p1.y, p2.y), height = botY - topY, cX = p1.x;
+                    if (height >= 30) {
+                        const shaft = document.createElement('div');
+                        shaft.style.cssText = `position:absolute;left:${cX - 35}px;top:${topY}px;width:70px;height:${height}px;background:repeating-linear-gradient(0deg,#222,#222 15px,#f5b041 15px,#f5b041 30px);background-size:100% 60px;border-left:4px solid #111;border-right:4px solid #111;box-sizing:border-box;z-index:400;box-shadow:0 4px 10px rgba(0,0,0,0.3);`;
+                        
+                        let st = document.getElementById('vconv-anim');
+                        if (!st) {
+                            st = document.createElement('style');
+                            st.id = 'vconv-anim';
+                            st.innerHTML = '@keyframes vConvRun { 0% { background-position: 0 0; } 100% { background-position: 0 -60px; } }';
+                            document.head.appendChild(st);
+                        }
+                        shaft.style.animation = 'vConvRun 0.6s linear infinite';
+                        world.appendChild(shaft);
+                        window.__vConveyors.push({ x: cX, topY, botY, h: height, speed: 7, el: shaft });
+                    }
+                    setTool(null);
+                }
+            }
+            else if (activeTool === 'carriage') {
+                if (!toolState.p1) {
+                    toolState.p1 = pos;
+                    statusBar.innerText = "Click TOP position for Carriage Lift";
+                } else {
+                    const p1 = toolState.p1, p2 = pos;
+                    const topY = Math.min(p1.y, p2.y), botY = Math.max(p1.y, p2.y), cX = p1.x;
+                    const el = document.createElement('div');
+                    el.style.cssText = `position:absolute;left:${cX - 40}px;top:${botY - 10}px;width:80px;height:16px;background:#9b59b6;border:2px solid #8e44ad;border-radius:6px;z-index:450;box-shadow:0 4px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;`;
+                    world.appendChild(el);
+                    window.__carriages.push({ x: cX, y: botY, topY, botY, el, state: 'WAIT', speed: 3, cargo: null, timer: 0 });
+                    setTool(null);
+                }
+            }
+            else if (activeTool === 'sensorgate') {
+                if (!toolState.sensorPos) {
+                    toolState.sensorPos = pos;
+                    statusBar.innerText = "Click GATE start point";
+                } else if (!toolState.g1) {
+                    toolState.g1 = pos;
+                    statusBar.innerText = "Click GATE end point";
+                } else {
+                    const sensorPos = toolState.sensorPos, g1 = toolState.g1, g2 = pos;
+                    const dx = g2.x - g1.x, dy = g2.y - g1.y, len = Math.hypot(dx, dy);
+                    if (len >= 15) {
+                        const ang = Math.atan2(dy, dx), tx = dx / len, ty = dy / len;
+                        const sEl = document.createElement('div');
+                        sEl.style.cssText = `position:absolute;left:${sensorPos.x - 25}px;top:${sensorPos.y - 8}px;width:50px;height:16px;background:#e74c3c;border:2px solid #900;border-radius:8px;z-index:460;box-shadow:0 2px 6px rgba(0,0,0,0.3);`;
+                        const bEl = document.createElement('div');
+                        bEl.style.cssText = `position:absolute;left:${sensorPos.x - 25}px;top:${sensorPos.y + 8}px;width:50px;height:110px;background:rgba(231,76,60,0.15);border:1px dashed #e74c3c;pointer-events:none;z-index:459;`;
+                        world.appendChild(sEl);
+                        world.appendChild(bEl);
+
+                        const gEl = document.createElement('div');
+                        gEl.style.cssText = `position:absolute;left:${g1.x}px;top:${g1.y}px;width:${len}px;height:36px;background:#34495e;border:2px solid #1a252f;box-sizing:border-box;border-radius:8px;z-index:460;transform-origin:0 50%;transform:translate(0,-50%) rotate(${ang}rad);box-shadow:0 4px 8px rgba(0,0,0,0.3);transition:background 0.2s ease;`;
+                        world.appendChild(gEl);
+
+                        const midG = { x: (g1.x + g2.x) / 2, y: (g1.y + g2.y) / 2 };
+                        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                        line.setAttribute('x1', sensorPos.x); line.setAttribute('y1', sensorPos.y);
+                        line.setAttribute('x2', midG.x); line.setAttribute('y2', midG.y);
+                        line.setAttribute('stroke', '#e74c3c'); line.setAttribute('stroke-width', '2'); line.setAttribute('stroke-dasharray', '4');
+                        svgLayer.appendChild(line);
+
+                        window.__sensorGates.push({ sX: sensorPos.x, sY: sensorPos.y, g1, g2, len, tx, ty, sEl, bEl, gEl, line, isOpen: false });
+                    }
+                    setTool(null);
+                }
+            }
+            else if (activeTool === 'portal') {
+                if (!toolState.pA) {
+                    toolState.pA = pos;
+                    statusBar.innerText = "Click to place PORTAL B (Orange Exit)";
+                } else {
+                    const pA = toolState.pA, pB = pos;
+                    const elA = document.createElement('div');
+                    elA.style.cssText = `position:absolute;left:${pA.x - 25}px;top:${pA.y - 40}px;width:50px;height:80px;border:4px solid #3498db;border-radius:50%;box-sizing:border-box;z-index:460;box-shadow:0 0 15px #3498db, inset 0 0 15px #3498db;background:rgba(52,152,219,0.2);pointer-events:none;`;
+                    const elB = document.createElement('div');
+                    elB.style.cssText = `position:absolute;left:${pB.x - 25}px;top:${pB.y - 40}px;width:50px;height:80px;border:4px solid #e67e22;border-radius:50%;box-sizing:border-box;z-index:460;box-shadow:0 0 15px #e67e22, inset 0 0 15px #e67e22;background:rgba(230,126,34,0.2);pointer-events:none;`;
+                    world.appendChild(elA);
+                    world.appendChild(elB);
+                    window.__portals.push({ pA, pB, elA, elB, cooldown: new Map() });
+                    setTool(null);
+                }
+            }
+        }
+
+        // PREVIEW LINES WHILE DRAWING
+        function handleToolMove(pos) {
+            let start = toolState.p1 || toolState.g1;
+            if (start) {
+                const dx = pos.x - start.x, dy = pos.y - start.y, len = Math.hypot(dx, dy), ang = Math.atan2(dy, dx);
+                if (!previewEl) {
+                    previewEl = document.createElement('div');
+                    previewEl.style.cssText = 'position:absolute;height:24px;background:rgba(245,176,65,0.4);border:2px dashed #f5b041;box-sizing:border-box;pointer-events:none;z-index:99999;transform-origin:0 50%;';
+                    world.appendChild(previewEl);
+                }
+                previewEl.style.left = start.x + 'px';
+                previewEl.style.top = start.y + 'px';
+                previewEl.style.width = len + 'px';
+                previewEl.style.transform = `translate(0,-50%) rotate(${ang}rad)`;
+            }
+        }
+
+        // --- PHYSICS & TOOL ENGINES ---
+        function createCrate(x, y) {
+            const c = document.createElement('div');
+            c.className = 'crate';
+            c.innerText = '✕';
+            world.appendChild(c);
+
+            const o = {
+                el: c,
+                x: x || 300,
+                y: y || 100,
+                vx: (Math.random() - 0.5) * 8,
+                vy: Math.random() * 4,
+                w: 60,
+                h: 60,
+                isDragging: false
+            };
+
+            let sx = 0, sy = 0, lx = 0, ly = 0;
+            c.addEventListener('mousedown', e => {
+                if (e.button !== 0 || window.__editMode) return;
+                e.stopPropagation();
+                e.preventDefault();
+                o.isDragging = true;
+                const pos = getWorldCoords(e);
+                sx = pos.x - o.x;
+                sy = pos.y - o.y;
+                lx = pos.x;
+                ly = pos.y;
+            });
+
+            window.addEventListener('mousemove', e => {
+                if (!o.isDragging) return;
+                const pos = getWorldCoords(e);
+                o.x = pos.x - sx;
+                o.y = pos.y - sy;
+                o.vx = (pos.x - lx) * 0.8;
+                o.vy = (pos.y - ly) * 0.8;
+                lx = pos.x;
+                ly = pos.y;
+            });
+
+            window.addEventListener('mouseup', () => { o.isDragging = false; });
+            window.__crates.push(o);
+        }
+
+        // MAIN ANIMATION / PHYSICS LOOP
+        const g = 0.4, b = 0.5, f = 0.98;
+        function physicsLoop() {
+            // 1. Crates Gravity & Bounds
+            if (window.__crates) {
+                window.__crates.forEach(c => {
+                    if (!c.isDragging) {
+                        c.vy += g;
+                        c.vx *= f;
+                        c.vy *= f;
+                        c.x += c.vx;
+                        c.y += c.vy;
+
+                        if (c.y + c.h > 2000) { c.y = 2000 - c.h; c.vy = -c.vy * b; c.vx *= 0.9; }
+                        if (c.y < 0) { c.y = 0; c.vy = -c.vy * b; }
+                        if (c.x < 0) { c.x = 0; c.vx = -c.vx * b; }
+                        if (c.x + c.w > 3000) { c.x = 3000 - c.w; c.vx = -c.vx * b; }
+                    }
+                });
+
+                // Crate-Crate Collisions
+                for (let iter = 0; iter < 4; iter++) {
+                    for (let i = 0; i < window.__crates.length; i++) {
+                        for (let j = i + 1; j < window.__crates.length; j++) {
+                            let a = window.__crates[i], k = window.__crates[j];
+                            let dx = (a.x + a.w / 2) - (k.x + k.w / 2);
+                            let dy = (a.y + a.h / 2) - (k.y + k.h / 2);
+                            let ox = (a.w / 2 + k.w / 2) - Math.abs(dx);
+                            let oy = (a.h / 2 + k.h / 2) - Math.abs(dy);
+
+                            if (ox > 0 && oy > 0) {
+                                if (ox < oy) {
+                                    let sg = dx > 0 ? 1 : -1;
+                                    if (!a.isDragging && !k.isDragging) {
+                                        a.x += (ox / 2) * sg; k.x -= (ox / 2) * sg;
+                                        let avg = (a.vx + k.vx) * 0.5;
+                                        a.vx = avg + (a.vx - avg) * -b; k.vx = avg + (k.vx - avg) * -b;
+                                    } else if (!a.isDragging) { a.x += ox * sg; a.vx = -a.vx * b + k.vx * 0.5; }
+                                    else if (!k.isDragging) { k.x -= ox * sg; k.vx = -k.vx * b + a.vx * 0.5; }
+                                } else {
+                                    let sg = dy > 0 ? 1 : -1;
+                                    if (!a.isDragging && !k.isDragging) {
+                                        a.y += (oy / 2) * sg; k.y -= (oy / 2) * sg;
+                                        let avg = (a.vy + k.vy) * 0.5;
+                                        a.vy = avg + (a.vy - avg) * -b; k.vy = avg + (k.vy - avg) * -b;
+                                    } else if (!a.isDragging) { a.y += oy * sg; a.vy = -a.vy * b + k.vy * 0.5; }
+                                    else if (!k.isDragging) { k.y -= oy * sg; k.vy = -k.vy * b + a.vy * 0.5; }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 2. Conveyor Belt Interactions
+            if (window.__crates && window.__conveyors) {
+                window.__crates.forEach(c => {
+                    if (c.isDragging) return;
+                    window.__conveyors.forEach(b => {
+                        const dx = (c.x + 30) - b.p1.x, dy = (c.y + 30) - b.p1.y;
+                        let t = dx * b.tx + dy * b.ty;
+                        t = Math.max(0, Math.min(b.len, t));
+                        const qx = b.p1.x + t * b.tx, qy = b.p1.y + t * b.ty;
+                        const rx = (c.x + 30) - qx, ry = (c.y + 30) - qy;
+                        const dist = Math.hypot(rx, ry);
+                        const minDist = b.r + 28;
+                        if (dist < minDist && dist > 0) {
+                            const nx = rx / dist, ny = ry / dist;
+                            const overlap = minDist - dist;
+                            c.x += nx * overlap; c.y += ny * overlap;
+                            const vn = c.vx * nx + c.vy * ny;
+                            if (vn < 0) { c.vx -= 1.4 * vn * nx; c.vy -= 1.4 * vn * ny; }
+                            c.vx = c.vx * 0.7 + (b.tx * b.speed) * 0.3;
+                            c.vy = c.vy * 0.7 + (b.ty * b.speed) * 0.3;
+                        }
+                    });
+                });
+            }
+
+            // 3. Vertical Conveyor Interactions
+            if (window.__vConveyors && window.__crates) {
+                window.__vConveyors.forEach(v => {
+                    window.__crates.forEach(c => {
+                        if (c.isDragging) return;
+                        if (Math.abs((c.x + 30) - v.x) < 35 && c.y >= v.topY - 20 && c.y <= v.botY + 20) {
+                            c.vx = (v.x - (c.x + 30)) * 0.3;
+                            c.vy = -v.speed;
+                        }
+                    });
+                });
+            }
+
+            // 4. Carriage Lift Operations
+            if (window.__carriages && window.__crates) {
+                window.__carriages.forEach(car => {
+                    if (car.state === 'WAIT') {
+                        car.y = car.botY;
+                        let caught = null;
+                        window.__crates.forEach(c => {
+                            if (!c.isDragging && Math.abs((c.x + 30) - car.x) < 40 && Math.abs((c.y + 60) - (car.y - 8)) < 14) caught = c;
+                        });
+                        if (caught) { car.state = 'RISING'; car.cargo = caught; }
+                    } else if (car.state === 'RISING') {
+                        car.y -= car.speed;
+                        if (car.cargo && !car.cargo.isDragging) {
+                            car.cargo.y = car.y - 60; car.cargo.x = car.x - 30;
+                            car.cargo.vy = 0; car.cargo.vx = 0;
+                        }
+                        if (car.y <= car.topY) { car.state = 'PUSH'; car.timer = 0; }
+                    } else if (car.state === 'PUSH') {
+                        car.timer++;
+                        if (car.cargo && !car.cargo.isDragging) { car.cargo.vx = 10; car.cargo.vy = -4; }
+                        if (car.timer > 12) { car.cargo = null; car.state = 'LOWERING'; }
+                    } else if (car.state === 'LOWERING') {
+                        car.y += car.speed;
+                        if (car.y >= car.botY) { car.y = car.botY; car.state = 'WAIT'; }
+                    }
+                    car.el.style.top = (car.y - 8) + 'px';
+                    car.el.style.left = (car.x - 40) + 'px';
+                });
+            }
+
+            // 5. Sensor Gates & Gate Collision
+            if (window.__sensorGates) {
+                window.__sensorGates.forEach(pair => {
+                    let detected = false;
+                    if (window.__crates) {
+                        window.__crates.forEach(c => {
+                            if (c.x + 30 >= pair.sX - 30 && c.x + 30 <= pair.sX + 30 && c.y + 30 >= pair.sY - 10 && c.y + 30 <= pair.sY + 110) detected = true;
+                        });
+                    }
+                    if (detected !== pair.isOpen) {
+                        pair.isOpen = detected;
+                        if (pair.isOpen) {
+                            pair.sEl.style.background = '#2ecc71'; pair.sEl.style.borderColor = '#27ae60';
+                            pair.bEl.style.background = 'rgba(46,204,113,0.2)'; pair.bEl.style.borderColor = '#2ecc71';
+                            pair.gEl.style.background = 'rgba(46,204,113,0.25)'; pair.gEl.style.borderColor = '#27ae60';
+                            pair.line.setAttribute('stroke', '#2ecc71');
+                        } else {
+                            pair.sEl.style.background = '#e74c3c'; pair.sEl.style.borderColor = '#900';
+                            pair.bEl.style.background = 'rgba(231,76,60,0.15)'; pair.bEl.style.borderColor = '#e74c3c';
+                            pair.gEl.style.background = '#34495e'; pair.gEl.style.borderColor = '#1a252f';
+                            pair.line.setAttribute('stroke', '#e74c3c');
+                        }
+                    }
+
+                    if (!pair.isOpen && window.__crates) {
+                        const gRadius = 18, cRadius = 28, minDist = gRadius + cRadius;
+                        window.__crates.forEach(c => {
+                            if (c.isDragging) return;
+                            const dx = (c.x + 30) - pair.g1.x, dy = (c.y + 30) - pair.g1.y;
+                            let t = dx * pair.tx + dy * pair.ty;
+                            t = Math.max(0, Math.min(pair.len, t));
+                            const qx = pair.g1.x + t * pair.tx, qy = pair.g1.y + t * pair.ty;
+                            const rx = (c.x + 30) - qx, ry = (c.y + 30) - qy;
+                            const dist = Math.hypot(rx, ry);
+                            if (dist < minDist && dist > 0) {
+                                const nx = rx / dist, ny = ry / dist;
+                                const overlap = minDist - dist;
+                                c.x += nx * overlap; c.y += ny * overlap;
+                                const vn = c.vx * nx + c.vy * ny;
+                                if (vn < 0) { c.vx -= 1.4 * vn * nx; c.vy -= 1.4 * vn * ny; }
+                            }
+                        });
+                    }
+                });
+            }
+
+            // 6. Portal Teleportation
+            if (window.__portals && window.__crates) {
+                window.__portals.forEach(pair => {
+                    window.__crates.forEach(c => {
+                        if (c.isDragging) return;
+                        const now = Date.now();
+                        if (pair.cooldown.get(c) && now - pair.cooldown.get(c) < 600) return;
+                        const dA = Math.hypot((c.x + 30) - pair.pA.x, (c.y + 30) - pair.pA.y);
+                        if (dA < 40) {
+                            c.x = pair.pB.x - 30; c.y = pair.pB.y - 50;
+                            c.vy = -Math.max(Math.abs(c.vy), 7);
+                            pair.cooldown.set(c, now);
+                        }
+                    });
+                });
+            }
+
+            // Render updated Crate DOM positions
+            if (window.__crates) {
+                window.__crates.forEach(c => {
+                    c.el.style.left = c.x + 'px';
+                    c.el.style.top = c.y + 'px';
+                });
+            }
+
+            requestAnimationFrame(physicsLoop);
+        }
+        requestAnimationFrame(physicsLoop);
+
+        // --- EDIT MODE SYSTEM ---
+        function toggleEditMode() {
+            window.__editMode = !window.__editMode;
+            const btn = document.getElementById('btn-edit');
+            if (window.__editMode) {
+                btn.classList.add('active');
+                statusBar.innerText = "EDIT MODE: Drag handles to adjust | Right-click handles or crates to DELETE";
+            } else {
+                btn.classList.remove('active');
+                statusBar.innerText = "📜 Scroll to Zoom | 🖱️ Drag background to Pan";
+            }
+            syncHandles();
+        }
+
+        function syncHandles() {
+            document.querySelectorAll('.pm-handle').forEach(h => h.remove());
+            if (!window.__editMode) return;
+
+            if (window.__conveyors) {
+                window.__conveyors.forEach((b, i) => {
+                    createHandle(b.p1.x, b.p1.y, '#f5b041', (x, y) => { b.p1.x = x; b.p1.y = y; upConv(b); }, () => delConv(i));
+                    createHandle(b.p2.x, b.p2.y, '#f5b041', (x, y) => { b.p2.x = x; b.p2.y = y; upConv(b); }, () => delConv(i));
+                });
+            }
+            if (window.__sensorGates) {
+                window.__sensorGates.forEach((sg, i) => {
+                    createHandle(sg.sX, sg.sY, '#e74c3c', (x, y) => { sg.sX = x; sg.sY = y; upSG(sg); }, () => delSG(i));
+                    createHandle(sg.g1.x, sg.g1.y, '#34495e', (x, y) => { sg.g1.x = x; sg.g1.y = y; upSG(sg); }, () => delSG(i));
+                    createHandle(sg.g2.x, sg.g2.y, '#34495e', (x, y) => { sg.g2.x = x; sg.g2.y = y; upSG(sg); }, () => delSG(i));
+                });
+            }
+            if (window.__crates) {
+                window.__crates.forEach((c, i) => {
+                    if (c.el && !c.el.__ctx) {
+                        c.el.__ctx = true;
+                        c.el.addEventListener('contextmenu', e => {
+                            if (!window.__editMode) return;
+                            e.preventDefault(); e.stopPropagation();
+                            c.el.remove(); window.__crates.splice(i, 1);
+                        });
+                    }
+                });
+            }
+        }
+
+        function createHandle(x, y, col, onDrag, onDel) {
+            const h = document.createElement('div');
+            h.className = 'pm-handle';
+            h.style.left = x + 'px';
+            h.style.top = y + 'px';
+            h.style.background = col;
+            let drag = false;
+
+            h.addEventListener('mousedown', e => {
+                if (e.button === 2) return;
+                e.preventDefault(); e.stopPropagation();
+                drag = true;
+
+                function mm(me) {
+                    if (!drag) return;
+                    const pos = getWorldCoords(me);
+                    h.style.left = pos.x + 'px'; h.style.top = pos.y + 'px';
+                    onDrag(pos.x, pos.y);
+                }
+                function mu() {
+                    drag = false;
+                    window.removeEventListener('mousemove', mm);
+                    window.removeEventListener('mouseup', mu);
+                }
+                window.addEventListener('mousemove', mm);
+                window.addEventListener('mouseup', mu);
+            });
+
+            h.addEventListener('contextmenu', e => {
+                e.preventDefault(); e.stopPropagation();
+                onDel();
+            });
+
+            world.appendChild(h);
+        }
+
+        function upConv(b) {
+            const dx = b.p2.x - b.p1.x, dy = b.p2.y - b.p1.y;
+            b.len = Math.hypot(dx, dy) || 1; b.tx = dx / b.len; b.ty = dy / b.len;
+            const ang = Math.atan2(dy, dx);
+            b.el.style.left = b.p1.x + 'px'; b.el.style.top = b.p1.y + 'px';
+            b.el.style.width = b.len + 'px';
+            b.el.style.transform = `translate(0,-50%) rotate(${ang}rad)`;
+        }
+
+        function upSG(sg) {
+            const dx = sg.g2.x - sg.g1.x, dy = sg.g2.y - sg.g1.y;
+            sg.len = Math.hypot(dx, dy) || 1; sg.tx = dx / sg.len; sg.ty = dy / sg.len;
+            const ang = Math.atan2(dy, dx);
+            sg.sEl.style.left = (sg.sX - 25) + 'px'; sg.sEl.style.top = (sg.sY - 8) + 'px';
+            sg.bEl.style.left = (sg.sX - 25) + 'px'; sg.bEl.style.top = (sg.sY + 8) + 'px';
+            sg.gEl.style.left = sg.g1.x + 'px'; sg.gEl.style.top = sg.g1.y + 'px';
+            sg.gEl.style.width = sg.len + 'px';
+            sg.gEl.style.transform = `translate(0,-50%) rotate(${ang}rad)`;
+            const midG = { x: (sg.g1.x + sg.g2.x) / 2, y: (sg.g1.y + sg.g2.y) / 2 };
+            sg.line.setAttribute('x1', sg.sX); sg.line.setAttribute('y1', sg.sY);
+            sg.line.setAttribute('x2', midG.x); sg.line.setAttribute('y2', midG.y);
+        }
+
+        function delConv(i) {
+            if (window.__conveyors[i]) { window.__conveyors[i].el.remove(); window.__conveyors.splice(i, 1); syncHandles(); }
+        }
+
+        function delSG(i) {
+            if (window.__sensorGates[i]) {
+                const sg = window.__sensorGates[i];
+                if (sg.sEl) sg.sEl.remove(); if (sg.bEl) sg.bEl.remove(); if (sg.gEl) sg.gEl.remove(); if (sg.line) sg.line.remove();
+                window.__sensorGates.splice(i, 1); syncHandles();
+            }
+        }
+
+        // --- CLEAR ALL ENGINE (SCRIPT TWO) ---
+        function clearAll() {
+            const wipe = a => { if (a) a.forEach(i => { Object.values(i).forEach(v => { if (v && v.remove) v.remove(); }); }); };
+            wipe(window.__crates);
+            wipe(window.__conveyors);
+            wipe(window.__sensorGates);
+            wipe(window.__carriages);
+            wipe(window.__portals);
+            wipe(window.__vConveyors);
+            window.__crates = []; window.__conveyors = []; window.__sensorGates = [];
+            window.__carriages = []; window.__portals = []; window.__vConveyors = [];
+            svgLayer.innerHTML = '';
+            document.querySelectorAll('.pm-handle').forEach(h => h.remove());
+        }
+
+        // Spawn starter crates
+        for (let i = 0; i < 5; i++) {
+            createCrate(400 + i * 120, 150);
+        }
+    </script>
+</body>
+</html>

@@ -361,6 +361,37 @@ h2 {
     grid-row: span 2;
 }
 
+/* =========================
+   READOUT CARDS
+   ========================= */
+
+.card.readout {
+    justify-content: center;
+}
+
+.card.readout .readout-value {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.card.readout .readout-number {
+    font-family: "JetBrains Mono", monospace;
+    font-size: clamp(4rem, 8vw, 7rem);
+    line-height: 0.9;
+    font-weight: 400;
+}
+
+.card.readout .readout-unit {
+    font-family: Arial, sans-serif;
+    font-size: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+.card.readout .readout-label {
+    margin-top: 18px;
+    font-family: Arial, sans-serif;
+    font-size: 1.2rem;
+}
 
 /* =========================
    CARD COLORS
