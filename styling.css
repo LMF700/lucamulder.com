@@ -444,6 +444,19 @@ h2 {
     --card-color: #8b5cf6;
 }
 
+.white {
+    --card-color: #fff;
+}
+
+.silver {
+    --card-color: #aaa;
+}
+
+.slate {
+    --card-color: #555;
+}
+
+
 /* =========================
    MOBILE
    ========================= */

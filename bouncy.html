@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PyPower - Ball Playground</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:"JetBrains Mono",monospace}
+:root{--bg:#06070d;--panel:#0c0f18;--border:#202637;--text:#e7eaf0;--muted:#7d8496;--accent:#a855f7}
+body{min-height:100vh;background:var(--bg);color:var(--text);padding:30px}
+.lab{max-width:1400px;margin:auto}
+header{margin-bottom:24px}
+h1{font-size:2rem}
+header p{color:var(--muted);margin-top:6px}
+.layout{display:grid;grid-template-columns:240px 1fr;gap:18px}
+.sidebar{display:flex;flex-direction:column;gap:18px}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px}
+.section-title{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px}
+button{width:100%;border:1px solid var(--border);background:#111522;color:var(--text);padding:10px;border-radius:8px;cursor:pointer;margin-bottom:8px}
+button:hover{border-color:var(--accent);background:#151a29}
+label{display:block;font-size:.8rem;color:var(--muted);margin-top:12px}
+.value{color:var(--text);float:right}
+input[type=range]{width:100%;margin-top:8px}
+.canvas-wrap{position:relative;width:100%;height:650px;overflow:hidden;border-radius:14px;border:1px solid var(--border);background:#05060b}
+canvas{display:block;width:100%;height:100%;cursor:crosshair}
+.telemetry{position:absolute;top:14px;right:14px;padding:12px 14px;background:rgba(6,7,13,.82);border:1px solid var(--border);border-radius:10px;font-size:.75rem;line-height:1.7;pointer-events:none}
+.status{color:#5ee68a}
+@media(max-width:800px){body{padding:15px}.layout{grid-template-columns:1fr}.canvas-wrap{height:500px}}
+</style>
+</head>
+<body>
+<div class="lab">
+<header>
+<h1>BALL PLAYGROUND</h1>
+<p>Tweak and observe as balls go <i>brr</i>.</p>
+</header>
+
+<div class="layout">
+<aside class="sidebar">
+<div class="panel">
+<div class="section-title">Arena</div>
+<button id="addBall">+ Add Ball</button>
+<button id="pause">Pause</button>
+<button id="reset">Reset</button>
+</div>
+
+<div class="panel">
+<div class="section-title">Sliders</div>
+<label>Gravity <span class="value" id="gravityValue">0.45</span></label>
+<input id="gravity" type="range" min="0" max="2.2" step=".01" value=".45">
+
+<label>Bounciness <span class="value" id="bounceValue">0.72</span></label>
+<input id="bounce" type="range" min=".1" max="2.05" step=".01" value=".72">
+
+<label>Friction <span class="value" id="frictionValue">0.04</span></label>
+<input id="friction" type="range" min="0" max=".15" step=".005" value=".04">
+</div>
+
+<div class="panel">
+<div class="section-title">Balls</div>
+<div>Balls: <span id="ballCount">0</span></div>
+<div>FPS: <span id="fps">60</span></div>
+<div>Physics: <span class="status" id="state">RUNNING</span></div>
+</div>
+
+<div class="panel">
+<div class="section-title">Go home</div>
+<a href="index.html">Go home</a>
+</div>
+</aside>
+
+<main class="panel">
+<div class="canvas-wrap">
+<canvas id="canvas"></canvas>
+<div class="telemetry">
+<div>BALLS: <span id="telemetryBalls">0</span></div>
+
+</div>
+</div>
+</main>
+</div>
+</div>
+
+<script>
+const canvas=document.getElementById("canvas");
+const ctx=canvas.getContext("2d");
+
+let balls=[];
+let dragging=null;
+let paused=false;
+let lastTime=performance.now();
+let fps=60;
+
+const terrain=[
+ {x:0,y:540},
+ {x:100,y:540},
+ {x:180,y:455},
+ {x:280,y:425},
+ {x:380,y:500},
+ {x:475,y:565},
+ {x:570,y:505},
+ {x:670,y:400},
+ {x:770,y:430},
+ {x:855,y:520},
+ {x:950,y:550},
+ {x:1040,y:475},
+ {x:1130,y:390},
+ {x:1230,y:455},
+ {x:1320,y:540},
+ {x:1500,y:540}
+];
+
+let trampolines=[
+ {x:315,y:425,w:95,strength:12},
+ {x:745,y:430,w:90,strength:14},
+ {x:1130,y:390,w:90,strength:15}
+];
+
+function resize(){
+ const r=canvas.getBoundingClientRect();
+ canvas.width=Math.floor(r.width*devicePixelRatio);
+ canvas.height=Math.floor(r.height*devicePixelRatio);
+ ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+ scaleTerrain();
+}
+function scaleTerrain(){
+ const sx=canvas.clientWidth/1500;
+ for(const p of terrain)p.sx=p.x*sx;
+ for(const t of trampolines){t.sx=t.x*sx;t.sw=t.w*sx}
+}
+window.addEventListener("resize",resize);
+resize();
+
+function terrainY(x){
+ let best=null;
+ for(let i=0;i<terrain.length-1;i++){
+  const a=terrain[i],b=terrain[i+1];
+  const ax=a.sx, bx=b.sx;
+  if(x>=ax&&x<=bx){
+   const t=(x-ax)/(bx-ax);
+   // Smooth interpolation gives the slopes a gently curved profile.
+   const s=t*t*(3-2*t);
+   return a.y+(b.y-a.y)*s;
+  }
+ }
+ return canvas.clientHeight-40;
+}
+
+function terrainSlope(x){
+ const e=2;
+ return (terrainY(x+e)-terrainY(x-e))/(2*e);
+}
+
+function makeBall(x,y,r=14){
+ return {
+  x,y,r,
+  vx:(Math.random()-.5)*2,
+  vy:Math.random()*1,
+  mass:r*r,
+  bounce:parseFloat(document.getElementById("bounce").value),
+  color:Math.random()>.5?"#a855f7":"#06b6d4"
+ };
+}
+
+function addBall(x=canvas.clientWidth/2+(Math.random()-.5)*180,y=100){
+ const r=10+Math.random()*8;
+ balls.push(makeBall(x,y,r));
+ updateUI();
+}
+
+function resolveTerrain(b){
+ const surface=terrainY(b.x);
+ const slope=terrainSlope(b.x);
+ const normalLen=Math.hypot(slope,1);
+ const nx=slope/normalLen;
+ const ny=-1/normalLen;
+
+ if(b.y+b.r>=surface){
+  b.x+=nx*(b.y+b.r-surface);
+  b.y+=ny*(b.y+b.r-surface);
+
+  const tx=1/Math.sqrt(1+slope*slope);
+  const ty=slope*tx;
+
+  const vn=b.vx*nx+b.vy*ny;
+  if(vn<0){
+   b.vx-=vn*nx*(1+b.bounce);
+   b.vy-=vn*ny*(1+b.bounce);
+  }
+
+  const vt=b.vx*tx+b.vy*ty;
+  const friction=parseFloat(document.getElementById("friction").value);
+  b.vx-=vt*tx*friction;
+  b.vy-=vt*ty*friction;
+
+  for(const t of trampolines){
+   if(b.x>=t.sx-t.sw/2&&b.x<=t.sx+t.sw/2&&Math.abs(surface-t.y)<18&&b.vy>0){
+    b.vy=-t.strength;
+    b.vx+=slope*1.5;
+   }
+  }
+ }
+}
+
+function resolveWalls(b){
+ if(b.x-b.r<0){b.x=b.r;b.vx=Math.abs(b.vx)*.65}
+ if(b.x+b.r>canvas.clientWidth){b.x=canvas.clientWidth-b.r;b.vx=-Math.abs(b.vx)*.65}
+ if(b.y-b.r<0){b.y=b.r;b.vy=Math.abs(b.vy)*.65}
+}
+
+function resolveBallCollisions(){
+ for(let pass=0;pass<2;pass++){
+  for(let i=0;i<balls.length;i++){
+   for(let j=i+1;j<balls.length;j++){
+    const a=balls[i],b=balls[j];
+    let dx=b.x-a.x,dy=b.y-a.y;
+    let d=Math.hypot(dx,dy);
+    if(d<.001){dx=1;dy=0;d=1}
+    const min=a.r+b.r;
+    if(d>=min)continue;
+
+    const nx=dx/d,ny=dy/d;
+    const overlap=min-d;
+    const total=a.mass+b.mass;
+
+    a.x-=nx*overlap*(b.mass/total);
+    a.y-=ny*overlap*(b.mass/total);
+    b.x+=nx*overlap*(a.mass/total);
+    b.y+=ny*overlap*(a.mass/total);
+
+    const rv=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;
+    if(rv<0){
+     const e=Math.min(a.bounce,b.bounce);
+     const impulse=-(1+e)*rv/(1/a.mass+1/b.mass);
+     a.vx-=impulse*nx/a.mass;
+     a.vy-=impulse*ny/a.mass;
+     b.vx+=impulse*nx/b.mass;
+     b.vy+=impulse*ny/b.mass;
+    }
+   }
+  }
+ }
+}
+
+function update(dt){
+ const g=parseFloat(document.getElementById("gravity").value);
+
+ for(const b of balls){
+  if(b===dragging)continue;
+
+  b.vy+=g*dt;
+  b.vx*=Math.pow(.999,dt);
+  b.vy*=Math.pow(.999,dt);
+
+  const speed=Math.hypot(b.vx,b.vy);
+  if(speed>22){
+   b.vx=b.vx/speed*22;
+   b.vy=b.vy/speed*22;
+  }
+
+  b.x+=b.vx*dt;
+  b.y+=b.vy*dt;
+
+  resolveWalls(b);
+  resolveTerrain(b);
+ }
+ resolveBallCollisions();
+}
+
+function drawArena(){
+ ctx.fillStyle="#05060b";
+ ctx.fillRect(0,0,canvas.clientWidth,canvas.clientHeight);
+
+ ctx.strokeStyle="#10131d";
+ ctx.lineWidth=1;
+ for(let x=0;x<canvas.clientWidth;x+=40){
+  ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.clientHeight);ctx.stroke();
+ }
+ for(let y=0;y<canvas.clientHeight;y+=40){
+  ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.clientWidth,y);ctx.stroke();
+ }
+
+ // Curved terrain
+ ctx.beginPath();
+ ctx.moveTo(0,canvas.clientHeight);
+ for(let x=0;x<=canvas.clientWidth;x+=4)ctx.lineTo(x,terrainY(x));
+ ctx.lineTo(canvas.clientWidth,canvas.clientHeight);
+ ctx.closePath();
+ ctx.fillStyle="#0b101a";
+ ctx.fill();
+
+ ctx.beginPath();
+ for(let x=0;x<=canvas.clientWidth;x+=4){
+  const y=terrainY(x);
+  if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+ }
+ ctx.strokeStyle="#8b5cf6";
+ ctx.lineWidth=3;
+ ctx.stroke();
+
+ // Trampolines
+ for(const t of trampolines){
+  const y=t.y;
+  ctx.strokeStyle="#22d3ee";
+  ctx.lineWidth=5;
+  ctx.beginPath();
+  ctx.moveTo(t.sx-t.sw/2,y);
+  ctx.lineTo(t.sx+t.sw/2,y);
+  ctx.stroke();
+
+  ctx.strokeStyle="#334155";
+  ctx.lineWidth=2;
+  for(let x=t.sx-t.sw/2+8;x<t.sx+t.sw/2;x+=12){
+   ctx.beginPath();
+   ctx.moveTo(x,y);
+   ctx.lineTo(x+5,y+9);
+   ctx.stroke();
+  }
+ }
+}
+
+function drawBall(b){
+ ctx.beginPath();
+ ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
+ ctx.fillStyle=b.color;
+ ctx.fill();
+
+ ctx.beginPath();
+ ctx.arc(b.x-b.r*.3,b.y-b.r*.35,b.r*.25,0,Math.PI*2);
+ ctx.fillStyle="rgba(255,255,255,.45)";
+ ctx.fill();
+
+ if(b===dragging){
+  ctx.strokeStyle="#fff";
+  ctx.lineWidth=2;
+  ctx.stroke();
+ }
+}
+
+function draw(){
+ drawArena();
+ for(const b of balls)drawBall(b);
+}
+
+function pointerPos(e){
+ const r=canvas.getBoundingClientRect();
+ return {x:e.clientX-r.left,y:e.clientY-r.top};
+}
+
+canvas.addEventListener("pointerdown",e=>{
+ const p=pointerPos(e);
+ for(let i=balls.length-1;i>=0;i--){
+  const b=balls[i];
+  if(Math.hypot(p.x-b.x,p.y-b.y)<=b.r+8){
+   dragging=b;
+   b.vx=0;b.vy=0;
+   canvas.setPointerCapture(e.pointerId);
+   return;
+  }
+ }
+ addBall(p.x,p.y);
+});
+
+canvas.addEventListener("pointermove",e=>{
+ if(!dragging)return;
+ const p=pointerPos(e);
+ dragging.x=p.x;
+ dragging.y=p.y;
+});
+
+canvas.addEventListener("pointerup",e=>{
+ dragging=null;
+ try{canvas.releasePointerCapture(e.pointerId)}catch{}
+});
+
+document.getElementById("addBall").onclick=()=>addBall();
+
+document.getElementById("pause").onclick=()=>{
+ paused=!paused;
+ document.getElementById("pause").textContent=paused?"Resume":"Pause";
+ document.getElementById("state").textContent=paused?"PAUSED":"RUNNING";
+ document.getElementById("telemetryState").textContent=paused?"PAUSED":"RUNNING";
+};
+
+document.getElementById("reset").onclick=reset;
+
+for(const id of ["gravity","bounce","friction"]){
+ document.getElementById(id).addEventListener("input",()=>{
+  const v=document.getElementById(id).value;
+  document.getElementById(id+"Value").textContent=v;
+  if(id==="bounce"){
+   for(const b of balls)b.bounce=parseFloat(v);
+  }
+ });
+}
+
+function updateUI(){
+ document.getElementById("ballCount").textContent=balls.length;
+ document.getElementById("telemetryBalls").textContent=balls.length;
+}
+
+function reset(){
+ balls=[];
+ for(let i=0;i<5;i++)addBall(
+  canvas.clientWidth*.25+i*38,
+  80+i*12
+ );
+ updateUI();
+}
+
+function frame(now){
+ const dt=Math.min((now-lastTime)/(1000/60),2);
+ lastTime=now;
+
+ const measured=1000/Math.max(now-(now-dt*(1000/60)),1);
+ fps+=(measured-fps)*.05;
+ document.getElementById("fps").textContent=Math.round(fps);
+
+ if(!paused)update(dt);
+ draw();
+ requestAnimationFrame(frame);
+}
+
+reset();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

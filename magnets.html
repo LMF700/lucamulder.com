@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PyPower</title> - Magnet Simulator</title>
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "JetBrains Mono", monospace;
+}
+
+:root {
+    --bg: #06070d;
+    --panel: #0c0f18;
+    --border: #202637;
+    --text: #e7eaf0;
+    --muted: #7d8496;
+    --accent: #a855f7;
+}
+
+body {
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    padding: 30px;
+}
+
+.lab {
+    max-width: 1400px;
+    margin: auto;
+}
+
+header {
+    margin-bottom: 24px;
+}
+
+header h1 {
+    font-size: 2rem;
+}
+
+header p {
+    color: var(--muted);
+    margin-top: 6px;
+}
+
+.layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 18px;
+}
+
+.panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px;
+}
+
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.section-title {
+    font-size: 0.75rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+}
+
+button {
+    width: 100%;
+    border: 1px solid var(--border);
+    background: #111522;
+    color: var(--text);
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-bottom: 8px;
+    transition: 0.15s;
+}
+
+button:hover {
+    border-color: var(--accent);
+    background: #151a29;
+}
+
+input[type="range"] {
+    width: 100%;
+    margin-top: 8px;
+}
+
+label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--muted);
+}
+
+.value {
+    color: var(--text);
+    float: right;
+}
+
+.canvas-wrap {
+    position: relative;
+    width: 100%;
+    height: 650px;
+    overflow: hidden;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: #05060b;
+}
+
+canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+}
+
+canvas:active {
+    cursor: grabbing;
+}
+
+.telemetry {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    padding: 12px 14px;
+    background: rgba(6, 7, 13, 0.82);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 0.75rem;
+    line-height: 1.7;
+    pointer-events: none;
+}
+
+.status {
+    color: #5ee68a;
+}
+
+@media (max-width: 800px) {
+    body {
+        padding: 15px;
+    }
+
+    .layout {
+        grid-template-columns: 1fr;
+    }
+
+    .canvas-wrap {
+        height: 500px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="lab">
+    <header>
+        <h1>Magnet Simulator</h1>
+        <p>Look at em go!</p>
+    </header>
+
+    <div class="layout">
+
+        <aside class="sidebar">
+
+            <div class="panel">
+                <div class="section-title">Experiment</div>
+
+                <button id="addMagnet">+ Add Magnet</button>
+                <button id="reset">Reset</button>
+                <button id="pause">Pause</button>
+            </div>
+
+            <div class="panel">
+                <div class="section-title">Selected Magnet</div>
+
+                <label>
+                    Strength
+                    <span class="value" id="strengthValue">100</span>
+                </label>
+
+                <input
+                    id="strength"
+                    type="range"
+                    min="20"
+                    max="300"
+                    value="100"
+                >
+
+                <br><br>
+
+                <label>
+                    Mass
+                    <span class="value" id="massValue">1.0</span>
+                </label>
+
+                <input
+                    id="mass"
+                    type="range"
+                    min="0.5"
+                    max="5"
+                    step="0.1"
+                    value="1"
+                >
+            </div>
+
+            <div class="panel">
+                <div class="section-title">Status</div>
+                <div>Magnets: <span id="magnetCount">2</span></div>
+                <div>FPS: <span id="fps">60</span></div>
+                <div>Physics: <span class="status">RUNNING</span></div>
+            </div>
+
+        </aside>
+
+        <main class="panel">
+            <div class="canvas-wrap">
+                <canvas id="canvas"></canvas>
+
+                <div class="telemetry">
+                    <div>EXPERIMENT 001</div>
+                    <div>MODE: MAGNETIC</div>
+                    <div>MAGNETS: <span id="telemetryMagnets">2</span></div>
+                    <div>PHYSICS: <span id="physicsState">RUNNING</span></div>
+                </div>
+            </div>
+        </main>
+
+    </div>
+</div>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+let magnets = [];
+let selectedMagnet = null;
+let dragging = false;
+let paused = false;
+
+let lastTime = performance.now();
+let fps = 60;
+
+/*
+ * Physics constants.
+ *
+ * The simulation runs every animation frame.
+ * dt is measured in "60 FPS frames", so the
+ * physics remains reasonably stable if FPS changes.
+ */
+const MAGNETIC_CONSTANT = 35;
+const DAMPING = 0.985;
+const WALL_BOUNCE = 0.65;
+const MIN_DISTANCE = 14;
+
+function resizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+
+    canvas.width = Math.max(1, Math.floor(rect.width * devicePixelRatio));
+    canvas.height = Math.max(1, Math.floor(rect.height * devicePixelRatio));
+
+    ctx.setTransform(
+        devicePixelRatio,
+        0,
+        0,
+        devicePixelRatio,
+        0,
+        0
+    );
+}
+
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
+
+function createMagnet(x, y, strength = 100) {
+    return {
+        x,
+        y,
+        vx: 0,
+        vy: 0,
+
+        angularVelocity: 0,
+        inertia: 900,
+
+        /*
+         * angle = direction from South to North.
+         * angle 0 means N is on the right.
+         */
+        angle: 0,
+
+        strength,
+        mass: 1,
+        size: 76
+    };
+}
+
+function getPolePosition(magnet, pole) {
+    const offset = magnet.size * 0.25;
+
+    return {
+        x: magnet.x + Math.cos(magnet.angle) * offset * pole,
+        y: magnet.y + Math.sin(magnet.angle) * offset * pole
+    };
+}
+
+/*
+ * Returns the force exerted ON magnet A
+ * by magnet B for one pair of poles.
+ *
+ * pole +1 = North
+ * pole -1 = South
+ */
+function poleForce(a, poleA, b, poleB) {
+    const pa = getPolePosition(a, poleA);
+    const pb = getPolePosition(b, poleB);
+
+    let dx = pb.x - pa.x;
+    let dy = pb.y - pa.y;
+
+    let distanceSquared = dx * dx + dy * dy;
+    distanceSquared = Math.max(
+        distanceSquared,
+        MIN_DISTANCE * MIN_DISTANCE
+    );
+
+    const distance = Math.sqrt(distanceSquared);
+
+    const nx = dx / distance;
+    const ny = dy / distance;
+
+    /*
+     * Same poles repel.
+     * Opposite poles attract.
+     */
+    const sign = poleA === poleB ? -1 : 1;
+
+    const magnitude =
+        MAGNETIC_CONSTANT *
+        a.strength *
+        b.strength /
+        distanceSquared;
+
+    return {
+        x: nx * magnitude * sign,
+        y: ny * magnitude * sign
+    };
+}
+
+/*
+ * Calculate magnetic force for every magnet
+ * against every other magnet, every frame.
+ */
+function updatePhysics(dt) {
+
+    const forces = magnets.map(() => ({
+        x: 0,
+        y: 0,
+        torque: 0
+    }));
+
+    for (let i = 0; i < magnets.length; i++) {
+
+        for (let j = i + 1; j < magnets.length; j++) {
+
+            const a = magnets[i];
+            const b = magnets[j];
+
+            /*
+             * Four pole interactions.
+             */
+            for (const poleA of [-1, 1]) {
+                for (const poleB of [-1, 1]) {
+
+                    const force = poleForce(
+                        a,
+                        poleA,
+                        b,
+                        poleB
+                    );
+
+                    /*
+                     * poleForce() returns the force ON A.
+                     * Apply it directly to A and the opposite
+                     * force to B (Newton's third law).
+                     */
+                    forces[i].x += force.x;
+                    forces[i].y += force.y;
+
+                    forces[j].x -= force.x;
+                    forces[j].y -= force.y;
+
+                    /*
+                     * Torque = r × F.
+                     * This makes each magnet rotate naturally
+                     * instead of behaving like a rigid stick
+                     * sliding around forever.
+                     */
+                    const pa = getPolePosition(a, poleA);
+                    const pb = getPolePosition(b, poleB);
+
+                    const raX = pa.x - a.x;
+                    const raY = pa.y - a.y;
+
+                    const rbX = pb.x - b.x;
+                    const rbY = pb.y - b.y;
+
+                    forces[i].torque +=
+                        raX * force.y - raY * force.x;
+
+                    forces[j].torque +=
+                        rbX * (-force.y) - rbY * (-force.x);
+                }
+            }
+        }
+    }
+
+    /*
+     * Integrate the forces.
+     */
+    for (let i = 0; i < magnets.length; i++) {
+
+        const magnet = magnets[i];
+
+        if (magnet === selectedMagnet && dragging) {
+            magnet.vx = 0;
+            magnet.vy = 0;
+            continue;
+        }
+
+        const force = forces[i];
+
+        const ax = force.x / magnet.mass;
+        const ay = force.y / magnet.mass;
+
+        magnet.vx += ax * dt;
+        magnet.vy += ay * dt;
+
+        magnet.vx *= Math.pow(DAMPING, dt);
+        magnet.vy *= Math.pow(DAMPING, dt);
+
+        /*
+         * Keep the sandbox from becoming a celestial mechanics simulator.
+         */
+        const maxSpeed = 8;
+        const speed = Math.hypot(magnet.vx, magnet.vy);
+
+        if (speed > maxSpeed) {
+            magnet.vx = magnet.vx / speed * maxSpeed;
+            magnet.vy = magnet.vy / speed * maxSpeed;
+        }
+
+        magnet.x += magnet.vx * dt;
+        magnet.y += magnet.vy * dt;
+
+        /*
+         * Angular dynamics.
+         */
+        const angularAcceleration =
+            force.torque / magnet.inertia;
+
+        magnet.angularVelocity +=
+            angularAcceleration * dt;
+
+        magnet.angularVelocity *=
+            Math.pow(0.94, dt);
+
+        magnet.angle +=
+            magnet.angularVelocity * dt;
+
+        /*
+         * Wall collisions.
+         */
+        const half = magnet.size / 2;
+
+        if (magnet.x < half) {
+            magnet.x = half;
+            magnet.vx = Math.abs(magnet.vx) * WALL_BOUNCE;
+        }
+
+        if (magnet.x > canvas.clientWidth - half) {
+            magnet.x = canvas.clientWidth - half;
+            magnet.vx = -Math.abs(magnet.vx) * WALL_BOUNCE;
+        }
+
+        if (magnet.y < half) {
+            magnet.y = half;
+            magnet.vy = Math.abs(magnet.vy) * WALL_BOUNCE;
+        }
+
+        if (magnet.y > canvas.clientHeight - half) {
+            magnet.y = canvas.clientHeight - half;
+            magnet.vy = -Math.abs(magnet.vy) * WALL_BOUNCE;
+        }
+    }
+}
+
+
+/*
+ * Prevent magnets from occupying the same space.
+ *
+ * The visual magnets are rectangular, but a circular collision
+ * boundary keeps the simulation stable and is cheap enough to
+ * run every frame, even with lots of magnets.
+ */
+function resolveMagnetCollisions() {
+
+    const collisionRadius = 38; // half of the 76px magnet length
+
+    /*
+     * A couple of passes help when several magnets are packed
+     * together at once.
+     */
+    for (let pass = 0; pass < 3; pass++) {
+
+        for (let i = 0; i < magnets.length; i++) {
+
+            for (let j = i + 1; j < magnets.length; j++) {
+
+                const a = magnets[i];
+                const b = magnets[j];
+
+                let dx = b.x - a.x;
+                let dy = b.y - a.y;
+
+                let distance = Math.hypot(dx, dy);
+
+                /*
+                 * Handle the extremely unlikely case where the
+                 * centers are exactly on top of each other.
+                 */
+                if (distance < 0.001) {
+                    dx = 1;
+                    dy = 0;
+                    distance = 1;
+                }
+
+                const minimumDistance = collisionRadius * 2;
+
+                if (distance >= minimumDistance) {
+                    continue;
+                }
+
+                const nx = dx / distance;
+                const ny = dy / distance;
+
+                const overlap = minimumDistance - distance;
+
+                /*
+                 * Push both magnets apart so they cannot remain
+                 * embedded in one another.
+                 */
+                const aShare = b === selectedMagnet && dragging ? 0 : 0.5;
+                const bShare = a === selectedMagnet && dragging ? 0 : 0.5;
+
+                if (aShare > 0) {
+                    a.x -= nx * overlap * aShare;
+                    a.y -= ny * overlap * aShare;
+                }
+
+                if (bShare > 0) {
+                    b.x += nx * overlap * bShare;
+                    b.y += ny * overlap * bShare;
+                }
+
+                /*
+                 * Relative velocity along the collision normal.
+                 * Only remove the component that is driving the
+                 * magnets into each other.
+                 */
+                const relativeVelocity =
+                    (b.vx - a.vx) * nx +
+                    (b.vy - a.vy) * ny;
+
+                if (relativeVelocity < 0) {
+                    const restitution = 0.55;
+
+                    const inverseMassA =
+                        (a === selectedMagnet && dragging) ? 0 : 1 / a.mass;
+
+                    const inverseMassB =
+                        (b === selectedMagnet && dragging) ? 0 : 1 / b.mass;
+
+                    const denominator =
+                        inverseMassA + inverseMassB;
+
+                    if (denominator > 0) {
+
+                        const impulse =
+                            -(1 + restitution) *
+                            relativeVelocity /
+                            denominator;
+
+                        if (inverseMassA > 0) {
+                            a.vx -= impulse * inverseMassA * nx;
+                            a.vy -= impulse * inverseMassA * ny;
+                        }
+
+                        if (inverseMassB > 0) {
+                            b.vx += impulse * inverseMassB * nx;
+                            b.vy += impulse * inverseMassB * ny;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+function drawBackground() {
+
+    ctx.fillStyle = "#05060b";
+    ctx.fillRect(
+        0,
+        0,
+        canvas.clientWidth,
+        canvas.clientHeight
+    );
+
+    ctx.strokeStyle = "#10131d";
+    ctx.lineWidth = 1;
+
+    const spacing = 40;
+
+    for (let x = 0; x <= canvas.clientWidth; x += spacing) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.clientHeight);
+        ctx.stroke();
+    }
+
+    for (let y = 0; y <= canvas.clientHeight; y += spacing) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.clientWidth, y);
+        ctx.stroke();
+    }
+}
+
+function drawMagnet(magnet) {
+
+    const width = magnet.size;
+    const height = 28;
+
+    ctx.save();
+
+    ctx.translate(magnet.x, magnet.y);
+    ctx.rotate(magnet.angle);
+
+    /*
+     * Selection outline.
+     */
+    if (magnet === selectedMagnet) {
+
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 2;
+
+        ctx.beginPath();
+
+        ctx.roundRect(
+            -width / 2 - 6,
+            -height / 2 - 6,
+            width + 12,
+            height + 12,
+            8
+        );
+
+        ctx.stroke();
+    }
+
+    /*
+     * North.
+     */
+    ctx.fillStyle = "#ef4444";
+
+    ctx.beginPath();
+    ctx.roundRect(
+        -width / 2,
+        -height / 2,
+        width / 2,
+        height,
+        6
+    );
+    ctx.fill();
+
+    /*
+     * South.
+     */
+    ctx.fillStyle = "#3b82f6";
+
+    ctx.beginPath();
+    ctx.roundRect(
+        0,
+        -height / 2,
+        width / 2,
+        height,
+        6
+    );
+    ctx.fill();
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 14px JetBrains Mono";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    ctx.fillText("N", -width / 4, 0);
+    ctx.fillText("S", width / 4, 0);
+
+    ctx.restore();
+}
+
+function draw() {
+    drawBackground();
+
+    for (const magnet of magnets) {
+        drawMagnet(magnet);
+    }
+}
+
+function animate(now) {
+
+    /*
+     * Convert elapsed milliseconds into a multiplier
+     * where 1.0 = one normal 60 FPS frame.
+     */
+    const dt = Math.min(
+        (now - lastTime) / (1000 / 60),
+        2
+    );
+
+    lastTime = now;
+
+    const instantFPS =
+        1000 / Math.max(now - (now - dt * (1000 / 60)), 1);
+
+    fps += (instantFPS - fps) * 0.05;
+
+    if (!paused) {
+        updatePhysics(dt);
+        resolveMagnetCollisions();
+    }
+
+    draw();
+
+    document.getElementById("fps").textContent =
+        Math.round(fps);
+
+    requestAnimationFrame(animate);
+}
+
+/*
+ * Mouse / pointer interaction.
+ */
+function getPointerPosition(event) {
+
+    const rect = canvas.getBoundingClientRect();
+
+    return {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top
+    };
+}
+
+canvas.addEventListener("pointerdown", event => {
+
+    const mouse = getPointerPosition(event);
+
+    /*
+     * Check from newest magnet to oldest so the
+     * topmost magnet is selected first.
+     */
+    for (let i = magnets.length - 1; i >= 0; i--) {
+
+        const magnet = magnets[i];
+
+        const dx = mouse.x - magnet.x;
+        const dy = mouse.y - magnet.y;
+
+        if (
+            Math.sqrt(dx * dx + dy * dy)
+            <= magnet.size * 0.65
+        ) {
+
+            selectedMagnet = magnet;
+            dragging = true;
+
+            magnet.vx = 0;
+            magnet.vy = 0;
+
+            canvas.setPointerCapture(event.pointerId);
+
+            updateUI();
+
+            break;
+        }
+    }
+});
+
+canvas.addEventListener("pointermove", event => {
+
+    if (!dragging || !selectedMagnet) return;
+
+    const mouse = getPointerPosition(event);
+
+    selectedMagnet.x = mouse.x;
+    selectedMagnet.y = mouse.y;
+});
+
+canvas.addEventListener("pointerup", event => {
+
+    dragging = false;
+
+    try {
+        canvas.releasePointerCapture(event.pointerId);
+    } catch {}
+});
+
+/*
+ * Buttons.
+ */
+document.getElementById("addMagnet").addEventListener("click", () => {
+
+    const magnet = createMagnet(
+        canvas.clientWidth / 2 +
+        (Math.random() - 0.5) * 180,
+
+        canvas.clientHeight / 2 +
+        (Math.random() - 0.5) * 180,
+
+        Number(document.getElementById("strength").value)
+    );
+
+    magnet.angle = Math.random() * Math.PI * 2;
+
+    magnets.push(magnet);
+
+    selectedMagnet = magnet;
+
+    updateUI();
+});
+
+document.getElementById("reset").addEventListener("click", reset);
+
+document.getElementById("pause").addEventListener("click", () => {
+
+    paused = !paused;
+
+    document.getElementById("pause").textContent =
+        paused ? "Resume" : "Pause";
+
+    document.getElementById("physicsState").textContent =
+        paused ? "PAUSED" : "RUNNING";
+});
+
+document.getElementById("strength").addEventListener("input", event => {
+
+    document.getElementById("strengthValue").textContent =
+        event.target.value;
+
+    if (selectedMagnet) {
+        selectedMagnet.strength =
+            Number(event.target.value);
+    }
+});
+
+document.getElementById("mass").addEventListener("input", event => {
+
+    document.getElementById("massValue").textContent =
+        Number(event.target.value).toFixed(1);
+
+    if (selectedMagnet) {
+        selectedMagnet.mass =
+            Number(event.target.value);
+    }
+});
+
+function updateUI() {
+
+    document.getElementById("magnetCount").textContent =
+        magnets.length;
+
+    document.getElementById("telemetryMagnets").textContent =
+        magnets.length;
+
+    if (selectedMagnet) {
+
+        document.getElementById("strength").value =
+            selectedMagnet.strength;
+
+        document.getElementById("strengthValue").textContent =
+            selectedMagnet.strength;
+
+        document.getElementById("mass").value =
+            selectedMagnet.mass;
+
+        document.getElementById("massValue").textContent =
+            selectedMagnet.mass.toFixed(1);
+    }
+}
+
+function reset() {
+
+    const cx = canvas.clientWidth / 2;
+    const cy = canvas.clientHeight / 2;
+
+    /*
+     * N facing N initially, so these two repel.
+     */
+    const a = createMagnet(cx - 110, cy, 100);
+
+    const b = createMagnet(cx + 110, cy, 100);
+
+    a.angle = 0;
+    b.angle = 0;
+
+    magnets = [a, b];
+
+    selectedMagnet = null;
+
+    paused = false;
+
+    document.getElementById("pause").textContent = "Pause";
+    document.getElementById("physicsState").textContent = "RUNNING";
+
+    updateUI();
+}
+
+reset();
+requestAnimationFrame(animate);
+</script>
+
+</body>
+</html>
