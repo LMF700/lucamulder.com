@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PyPower - Bookmarklets</title>
-    <link rel="stylesheet" href="styling.css">
+    <link rel="stylesheet" href="../styles/styling.css">
+    <link rel="icon" type="image/png" href="../assets/fav_marklets.png">
 </head>
 <body>
     <section id="projects">
@@ -12,7 +13,7 @@
         <h2>Bookmarklets</h2>
 
         <div class="cards">
-            <a href="index.html" class="card pink wide">
+            <a href="../index.html" class="card pink wide">
                 <div class="card-icon">←</div>
                 <div>
                     <h3>Go Home</h3>
@@ -185,7 +186,7 @@
                 </div>
                 <div class="status">Click to Copy</div>
             </a>
-            <a href="sandbox.html" class="card lime">
+            <a href="../pages/sandbox.html" class="card lime">
                 <div class="card-icon">✧</div>
                 <div>
                     <h3>Web Edition</h3>
@@ -220,6 +221,6 @@
 
     <textarea id="vconveyor-bookmarklet" hidden>javascript:(function(){if(!window.__vConveyors)window.__vConveyors=[];const note=document.createElement('div');note.style.cssText='position:fixed;top:15px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:8px 16px;border-radius:20px;font-family:Verdana;font-size:14px;z-index:9999999;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,0.3);';note.innerText='Click BOTTOM of Vertical Conveyor';document.body.appendChild(note);document.body.style.cursor='crosshair';let p1=null;function onClick(e){e.preventDefault();e.stopPropagation();if(!p1){p1={x:e.clientX,y:e.clientY};note.innerText='Click TOP of Vertical Conveyor';}else{const p2={x:e.clientX,y:e.clientY};window.removeEventListener('click',onClick,true);document.body.style.cursor='';if(note)note.remove();const topY=Math.min(p1.y,p2.y),botY=Math.max(p1.y,p2.y),height=botY-topY,cX=p1.x;if(height<30)return;const shaft=document.createElement('div');shaft.style.cssText='position:fixed;left:'+(cX-35)+'px;top:'+topY+'px;width:70px;height:'+height+'px;background:repeating-linear-gradient(0deg,#222,#222 15px,#f5b041 15px,#f5b041 30px);background-size:100% 60px;border-left:4px solid #111;border-right:4px solid #111;box-sizing:border-box;z-index:999980;box-shadow:0 4px 10px rgba(0,0,0,0.3);';const stId='vconv-anim';if(!document.getElementById(stId)){const st=document.createElement('style');st.id=stId;st.innerHTML='@keyframes vConvRun{0%{background-position:0 0;}100%{background-position:0 -60px;}}';document.head.appendChild(st);}shaft.style.animation='vConvRun 0.6s linear infinite';document.body.appendChild(shaft);window.__vConveyors.push({x:cX,topY:topY,botY:botY,h:height,speed:7,el:shaft});}}setTimeout(()=>{window.addEventListener('click',onClick,{once:false,capture:true});},50);if(!window.__vConvPhysicsRunning){window.__vConvPhysicsRunning=true;function loop(){if(window.__vConveyors&&window.__crates){window.__vConveyors.forEach(v=>{window.__crates.forEach(c=>{if(c.isDragging)return;if(Math.abs(c.x-v.x)<35&&c.y>=v.topY-20&&c.y<=v.botY+20){c.vx=(v.x-c.x)*0.3;c.vy=-v.speed;c.vrot=(c.vrot||0)*0.8;}});});}requestAnimationFrame(loop);}requestAnimationFrame(loop);}})();</textarea>
 
-    <script src="widgets.js"></script>
+    <script src="../js/widgets.js"></script>
 </body>
 </html>
