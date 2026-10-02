@@ -250,3 +250,168 @@ function parseMarkup(element) {
     element.innerHTML = html;
 
 }
+
+const gemButton = document.getElementById("gemButton");
+const editorBody = document.getElementById("body");
+
+const gemColors = [
+    { id: 1, name: "Red", color: "#ff5268" },
+    { id: 2, name: "Orange", color: "#ff9b45" },
+    { id: 3, name: "Yellow", color: "#f6d64a" },
+    { id: 4, name: "Green", color: "#56df91" },
+    { id: 5, name: "Blue", color: "#55aaff" },
+    { id: 6, name: "Purple", color: "#b18aff" },
+    { id: 7, name: "Rose", color: "#ff91d2" },
+    { id: 8, name: "White", color: "#d8e7f7" }
+];
+
+const gemMenu = document.createElement("div");
+gemMenu.id = "gemMenu";
+gemMenu.setAttribute("role", "dialog");
+gemMenu.setAttribute("aria-label", "Choose a text gem");
+gemMenu.hidden = true;
+
+gemColors.forEach(gem => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "gemOption";
+    button.title = `${gem.name} (Gem ${gem.id})`;
+    button.setAttribute("aria-label", gem.name);
+
+    const swatch = document.createElement("span");
+    swatch.className = "gemSwatch";
+    swatch.style.setProperty("--gem-color", gem.color);
+    swatch.textContent = "✦";
+
+    const label = document.createElement("span");
+    label.textContent = `${gem.id}. ${gem.name}`;
+
+    button.append(swatch, label);
+
+    // Keep the editor selection when clicking the menu.
+    button.addEventListener("mousedown", event => {
+        event.preventDefault();
+    });
+
+    button.addEventListener("click", () => {
+        applyGem(gem.id);
+        closeGemMenu();
+    });
+
+    gemMenu.appendChild(button);
+});
+
+document.body.appendChild(gemMenu);
+
+let savedGemRange = null;
+
+function rememberGemSelection() {
+    const selection = window.getSelection();
+
+    if (
+        selection &&
+        selection.rangeCount > 0 &&
+        editorBody.contains(selection.anchorNode) &&
+        editorBody.contains(selection.focusNode)
+    ) {
+        savedGemRange = selection.getRangeAt(0).cloneRange();
+    }
+}
+
+function openGemMenu() {
+    rememberGemSelection();
+
+    if (!savedGemRange || savedGemRange.collapsed) {
+        return;
+    }
+
+    const rect = gemButton.getBoundingClientRect();
+
+    gemMenu.style.left =
+        `${Math.min(rect.left, window.innerWidth - 220)}px`;
+    gemMenu.style.top =
+        `${Math.min(rect.bottom + 8, window.innerHeight - 300)}px`;
+
+    gemMenu.hidden = false;
+}
+
+function closeGemMenu() {
+    gemMenu.hidden = true;
+}
+
+function applyGem(gemId) {
+    if (!savedGemRange || savedGemRange.collapsed) {
+        return;
+    }
+
+    // Only format text inside the note editor.
+    if (
+        !editorBody.contains(savedGemRange.startContainer) ||
+        !editorBody.contains(savedGemRange.endContainer)
+    ) {
+        return;
+    }
+
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(savedGemRange);
+
+    const selectedText = savedGemRange.toString();
+    if (!selectedText) return;
+
+    // Extract the selection so formatting can span multiple text nodes.
+    const contents = savedGemRange.extractContents();
+
+    // Remove existing gem wrappers within the selected fragment.
+    contents.querySelectorAll?.("[data-gem]").forEach(node => {
+        node.replaceWith(...node.childNodes);
+    });
+
+    const gem = document.createElement("span");
+    gem.className = `gem gem-${gemId}`;
+    gem.dataset.gem = String(gemId);
+    gem.appendChild(contents);
+
+    savedGemRange.insertNode(gem);
+
+    // Place the caret after the newly formatted text.
+    const newRange = document.createRange();
+    newRange.selectNodeContents(gem);
+    newRange.collapse(false);
+
+    selection.removeAllRanges();
+    selection.addRange(newRange);
+    savedGemRange = newRange.cloneRange();
+
+    editorBody.focus();
+}
+
+gemButton.addEventListener("mousedown", rememberGemSelection);
+gemButton.addEventListener("click", openGemMenu);
+
+document.addEventListener("keydown", event => {
+    if (
+        event.ctrlKey &&
+        event.shiftKey === false &&
+        event.key.toLowerCase() === "g" &&
+        !event.altKey
+    ) {
+        if (document.activeElement === editorBody) {
+            event.preventDefault();
+            openGemMenu();
+        }
+    }
+
+    if (event.key === "Escape") {
+        closeGemMenu();
+    }
+});
+
+document.addEventListener("click", event => {
+    if (
+        !gemMenu.contains(event.target) &&
+        event.target !== gemButton
+    ) {
+        closeGemMenu();
+    }
+});

@@ -1,0 +1,783 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#100f19">
+    <title>Battle | Stickman Warfare</title>
+
+    <style>
+        :root {
+            --bg: #100f19;
+            --panel: #1b1926;
+            --gold: #e8bd72;
+            --text: #f5eddf;
+            --muted: #aaa1aa;
+            --red: #e66f72;
+            --green: #79d69a;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background:
+                radial-gradient(ellipse at 50% 0%, #30283b, var(--bg) 65%);
+            color: var(--text);
+            font-family: "Segoe UI", Arial, sans-serif;
+        }
+
+        button, a { font: inherit; }
+
+        button:focus-visible, a:focus-visible {
+            outline: 2px solid var(--gold);
+            outline-offset: 3px;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 15px 24px;
+            border-bottom: 1px solid #ffffff12;
+            background: #100f19cc;
+        }
+
+        .brand {
+            color: var(--gold);
+            font-size: 13px;
+            font-weight: 900;
+            letter-spacing: 2px;
+        }
+
+        .brand small {
+            display: block;
+            margin-top: 4px;
+            color: var(--muted);
+            font-size: 9px;
+            letter-spacing: 3px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .connection {
+            color: var(--muted);
+            font-size: 11px;
+        }
+
+        .connection.connected { color: var(--green); }
+        .connection.disconnected { color: var(--red); }
+
+        .button {
+            padding: 9px 13px;
+            border: 1px solid #ffffff24;
+            border-radius: 3px;
+            background: #ffffff08;
+            color: var(--text);
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .button:hover {
+            border-color: var(--gold);
+        }
+
+        main {
+            width: min(1050px, 100%);
+            margin: auto;
+            padding: 24px;
+        }
+
+        .match-heading {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+
+        .eyebrow {
+            color: var(--gold);
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 3px;
+        }
+
+        h1 {
+            margin: 7px 0 0;
+            font-size: clamp(25px, 4vw, 37px);
+            letter-spacing: -1px;
+        }
+
+        .round-info {
+            color: var(--muted);
+            font-size: 12px;
+            text-align: right;
+        }
+
+        .arena-frame {
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #e8bd723d;
+            border-radius: 5px;
+            background: #131321;
+            box-shadow: 0 20px 80px #0005;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            aspect-ratio: 800 / 450;
+            outline: none;
+        }
+
+        .arena-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: #0b0914b8;
+            text-align: center;
+            pointer-events: none;
+        }
+
+        .arena-overlay.hidden { display: none; }
+
+        .overlay-card {
+            max-width: 420px;
+            padding: 24px;
+            border: 1px solid #e8bd7244;
+            border-radius: 5px;
+            background: #171522ee;
+        }
+
+        .overlay-card h2 {
+            margin: 0 0 10px;
+            color: var(--gold);
+            font-size: clamp(22px, 4vw, 34px);
+        }
+
+        .overlay-card p {
+            margin: 0;
+            color: #c3bac4;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+
+        .hud {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 18px;
+            margin-top: 16px;
+            padding: 15px 18px;
+            border: 1px solid #ffffff13;
+            border-radius: 4px;
+            background: var(--panel);
+        }
+
+        .hud-player:last-child { text-align: right; }
+
+        .hud-name {
+            margin-bottom: 8px;
+            color: var(--muted);
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 1px;
+        }
+
+        .health-track {
+            height: 9px;
+            overflow: hidden;
+            border-radius: 2px;
+            background: #090810;
+        }
+
+        .health-fill {
+            width: 100%;
+            height: 100%;
+            background: var(--green);
+            transition: width 120ms linear;
+        }
+
+        .hud-player:last-child .health-fill {
+            margin-left: auto;
+            background: var(--red);
+        }
+
+        .health-label {
+            margin-top: 5px;
+            color: var(--muted);
+            font-size: 10px;
+        }
+
+        .versus {
+            color: var(--gold);
+            font-size: 13px;
+            font-weight: 900;
+        }
+
+        .bottom-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-top: 14px;
+        }
+
+        .info-card {
+            padding: 16px;
+            border: 1px solid #ffffff13;
+            border-radius: 4px;
+            background: #1b1926b8;
+        }
+
+        .info-card h2 {
+            margin: 0 0 10px;
+            color: var(--gold);
+            font-size: 11px;
+            letter-spacing: 2px;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+        }
+
+        kbd {
+            display: inline-block;
+            min-width: 24px;
+            padding: 5px 7px;
+            border: 1px solid #ffffff24;
+            border-radius: 3px;
+            background: #ffffff08;
+            color: var(--text);
+            text-align: center;
+            font-size: 10px;
+        }
+
+        .control-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin: 2px 9px 2px 0;
+            color: var(--muted);
+            font-size: 11px;
+        }
+
+        #playerList {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+        }
+
+        .player-chip {
+            padding: 6px 8px;
+            border: 1px solid #ffffff1c;
+            border-radius: 3px;
+            color: #d5cdd7;
+            font-size: 10px;
+        }
+
+        .player-chip.dead {
+            color: #e58c8c;
+            opacity: .65;
+        }
+
+        .error {
+            margin-top: 14px;
+            color: #f09b9b;
+            font-size: 12px;
+        }
+
+        @media (max-width: 600px) {
+            header { padding: 14px; }
+            main { padding: 16px 12px; }
+            .header-right { gap: 8px; }
+            .connection { max-width: 95px; text-align: right; }
+            .match-heading { align-items: flex-start; }
+            .round-info { max-width: 110px; }
+            .hud { gap: 9px; padding: 12px 9px; }
+            .bottom-grid { grid-template-columns: 1fr; }
+            .overlay-card { padding: 16px; }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="brand">
+            STICKMAN WARFARE
+            <small>QAMAR DESERT</small>
+        </div>
+
+        <div class="header-right">
+            <span id="connection" class="connection">Connecting...</span>
+            <a class="button" href="main.html">EXIT MATCH</a>
+        </div>
+    </header>
+
+    <main>
+        <section class="match-heading">
+            <div>
+                <div class="eyebrow">COMBAT ZONE // 001</div>
+                <h1>The Desert Arena</h1>
+            </div>
+
+            <div class="round-info" id="roundInfo">
+                Waiting for server state
+            </div>
+        </section>
+
+        <section class="arena-frame" aria-label="Battle arena">
+            <canvas id="arena" width="800" height="450"
+                    tabindex="0" aria-label="Game arena"></canvas>
+
+            <div class="arena-overlay" id="overlay">
+                <div class="overlay-card">
+                    <h2 id="overlayTitle">CONNECTING</h2>
+                    <p id="overlayText">
+                        Establishing a connection to the battlefield...
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section class="hud" aria-label="Player health">
+            <div class="hud-player">
+                <div class="hud-name" id="selfName">YOUR FIGHTER</div>
+                <div class="health-track">
+                    <div class="health-fill" id="selfHealthBar"></div>
+                </div>
+                <div class="health-label" id="selfHealthText">-- HP</div>
+            </div>
+
+            <div class="versus">VS</div>
+
+            <div class="hud-player">
+                <div class="hud-name">OPPONENTS</div>
+                <div class="health-track">
+                    <div class="health-fill" id="enemyHealthBar"></div>
+                </div>
+                <div class="health-label" id="enemyHealthText">-- HP</div>
+            </div>
+        </section>
+
+        <section class="bottom-grid">
+            <div class="info-card">
+                <h2>CONTROLS</h2>
+                <div class="controls">
+                    <div class="control-item"><kbd>A</kbd><kbd>D</kbd> Move</div>
+                    <div class="control-item"><kbd>W</kbd> / <kbd>Space</kbd> Jump</div>
+                    <div class="control-item"><kbd>J</kbd> Attack</div>
+                </div>
+            </div>
+
+            <div class="info-card">
+                <h2>FIGHTERS ONLINE</h2>
+                <div id="playerList">Waiting for players...</div>
+            </div>
+        </section>
+
+        <p class="error" id="errorMessage" role="status"></p>
+    </main>
+
+    <script>
+        /*
+         * Local testing:
+         *   ws://localhost:3000
+         *
+         * Public hosting:
+         *   Set this to your actual wss:// server endpoint.
+         */
+        const SERVER_URL =
+            location.hostname === "localhost" ||
+            location.hostname === "127.0.0.1"
+                ? "ws://localhost:3000"
+                : ""; // Configure your public WebSocket endpoint.
+
+        const canvas = document.getElementById("arena");
+        const ctx = canvas.getContext("2d");
+
+        const connectionLabel = document.getElementById("connection");
+        const overlay = document.getElementById("overlay");
+        const overlayTitle = document.getElementById("overlayTitle");
+        const overlayText = document.getElementById("overlayText");
+        const errorMessage = document.getElementById("errorMessage");
+
+        const selfHealthBar = document.getElementById("selfHealthBar");
+        const selfHealthText = document.getElementById("selfHealthText");
+        const enemyHealthBar = document.getElementById("enemyHealthBar");
+        const enemyHealthText = document.getElementById("enemyHealthText");
+
+        const roundInfo = document.getElementById("roundInfo");
+        const playerList = document.getElementById("playerList");
+
+        const PLAYER_SIZE = 28;
+        const keys = new Set();
+
+        let socket = null;
+        let myId = null;
+        let players = [];
+        let platforms = [];
+        let connected = false;
+
+        function showOverlay(title, text) {
+            overlayTitle.textContent = title;
+            overlayText.textContent = text;
+            overlay.classList.remove("hidden");
+        }
+
+        function hideOverlay() {
+            overlay.classList.add("hidden");
+        }
+
+        function setConnection(isConnected, text) {
+            connected = isConnected;
+            connectionLabel.textContent = text;
+            connectionLabel.className =
+                "connection " + (isConnected ? "connected" : "disconnected");
+        }
+
+        function connect() {
+            if (!SERVER_URL) {
+                setConnection(false, "Not configured");
+                showOverlay(
+                    "SERVER NOT CONFIGURED",
+                    "The public multiplayer server address has not been set."
+                );
+                return;
+            }
+
+            setConnection(false, "Connecting...");
+            showOverlay("CONNECTING", "Joining the battlefield...");
+
+            try {
+                socket = new WebSocket(SERVER_URL);
+            } catch {
+                connectionFailed();
+                return;
+            }
+
+            socket.addEventListener("open", () => {
+                setConnection(true, "Connected");
+                errorMessage.textContent = "";
+            });
+
+            socket.addEventListener("message", event => {
+                let message;
+
+                try {
+                    message = JSON.parse(event.data);
+                } catch {
+                    return;
+                }
+
+                if (message.type === "welcome") {
+                    myId = message.playerId;
+                    document.getElementById("selfName").textContent =
+                        "YOUR FIGHTER #" + myId;
+                }
+
+                if (message.type === "state") {
+                    players = Array.isArray(message.players)
+                        ? message.players : [];
+                    platforms = Array.isArray(message.platforms)
+                        ? message.platforms : [];
+
+                    updateHUD();
+                    hideOverlay();
+                }
+            });
+
+            socket.addEventListener("error", connectionFailed);
+
+            socket.addEventListener("close", () => {
+                setConnection(false, "Disconnected");
+                showOverlay(
+                    "CONNECTION LOST",
+                    "The server disconnected. Return to the main menu and try again."
+                );
+                keys.clear();
+            });
+        }
+
+        function connectionFailed() {
+            setConnection(false, "Offline");
+            showOverlay(
+                "SERVER UNAVAILABLE",
+                "The multiplayer server could not be reached. Check the server and connection."
+            );
+        }
+
+        function sendInput() {
+            if (!connected || !socket || socket.readyState !== WebSocket.OPEN) {
+                return;
+            }
+
+            socket.send(JSON.stringify({
+                type: "input",
+                left: keys.has("a") || keys.has("arrowleft"),
+                right: keys.has("d") || keys.has("arrowright"),
+                jump: keys.has("w") || keys.has("arrowup") || keys.has(" ")
+            }));
+        }
+
+        function attack() {
+            if (!connected || !socket || socket.readyState !== WebSocket.OPEN) {
+                return;
+            }
+
+            socket.send(JSON.stringify({ type: "attack" }));
+        }
+
+        window.addEventListener("keydown", event => {
+            const key = event.key.toLowerCase();
+
+            if ([
+                "arrowleft", "arrowright", "arrowup", " "
+            ].includes(key)) {
+                event.preventDefault();
+            }
+
+            if (key === "j" && !event.repeat) {
+                attack();
+            }
+
+            keys.add(key);
+            sendInput();
+        });
+
+        window.addEventListener("keyup", event => {
+            keys.delete(event.key.toLowerCase());
+            sendInput();
+        });
+
+        window.addEventListener("blur", () => {
+            keys.clear();
+            sendInput();
+        });
+
+        function updateHUD() {
+            const self = players.find(p => p.id === myId);
+            const enemies = players.filter(p => p.id !== myId && p.alive);
+            const living = players.filter(p => p.alive).length;
+
+            if (self) {
+                const health = Math.max(0, Math.min(100, self.health));
+                selfHealthBar.style.width = health + "%";
+                selfHealthText.textContent = health + " HP";
+
+                if (!self.alive) {
+                    showOverlay("DEFEATED", "You have been eliminated.");
+                }
+            }
+
+            const enemyHealth = enemies.length
+                ? Math.max(...enemies.map(p => p.health))
+                : 0;
+
+            enemyHealthBar.style.width = enemyHealth + "%";
+            enemyHealthText.textContent = enemies.length
+                ? enemyHealth + " HP · " + enemies.length + " opponent(s)"
+                : "No opponents";
+
+            roundInfo.textContent =
+                living + " fighter(s) alive · " + players.length + " connected";
+
+            playerList.replaceChildren();
+
+            for (const player of players) {
+                const chip = document.createElement("span");
+                chip.className = "player-chip" + (player.alive ? "" : " dead");
+                chip.textContent =
+                    "Player " + player.id +
+                    (player.id === myId ? " (YOU)" : "") +
+                    (player.alive ? "" : " · OUT");
+                playerList.appendChild(chip);
+            }
+
+            if (players.length === 0) {
+                playerList.textContent = "Waiting for players...";
+            }
+        }
+
+        function drawBackground() {
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, "#19182a");
+            gradient.addColorStop(1, "#393047");
+
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Stars
+            ctx.fillStyle = "#e8dfc9";
+
+            for (let i = 0; i < 65; i++) {
+                const x = (i * 137 + 37) % canvas.width;
+                const y = (i * 71 + 19) % 250;
+
+                ctx.globalAlpha = 0.25 + (i % 4) * 0.18;
+                ctx.fillRect(x, y, 2, 2);
+            }
+
+            ctx.globalAlpha = 1;
+
+            // Moon
+            ctx.fillStyle = "#f0dcb0";
+            ctx.beginPath();
+            ctx.arc(665, 90, 32, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = "#252239";
+            ctx.beginPath();
+            ctx.arc(680, 78, 29, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Distant dunes
+            ctx.fillStyle = "#282337";
+            ctx.beginPath();
+            ctx.moveTo(0, 360);
+            ctx.quadraticCurveTo(180, 260, 350, 355);
+            ctx.quadraticCurveTo(560, 270, 800, 340);
+            ctx.lineTo(800, 450);
+            ctx.lineTo(0, 450);
+            ctx.fill();
+        }
+
+        function drawPlatforms() {
+            for (const platform of platforms) {
+                ctx.fillStyle = "#8d7359";
+                ctx.fillRect(
+                    platform.x, platform.y,
+                    platform.width, platform.height
+                );
+
+                ctx.fillStyle = "#c5a17a";
+                ctx.fillRect(platform.x, platform.y, platform.width, 3);
+
+                ctx.fillStyle = "#493747";
+                ctx.fillRect(
+                    platform.x, platform.y + platform.height - 3,
+                    platform.width, 3
+                );
+            }
+        }
+
+        function drawPlayer(player) {
+            if (!player.alive) return;
+
+            const cx = player.x + PLAYER_SIZE / 2;
+            const headY = player.y + 6;
+            const bodyTop = player.y + 13;
+            const bodyBottom = player.y + 23;
+            const color = player.id === myId ? "#e8bd72" : "#e57972";
+
+            ctx.save();
+
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = 3;
+            ctx.lineCap = "round";
+
+            // Shadow
+            ctx.globalAlpha = 0.2;
+            ctx.fillStyle = "#000";
+            ctx.beginPath();
+            ctx.ellipse(cx, player.y + PLAYER_SIZE + 2, 15, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+
+            // Head
+            ctx.beginPath();
+            ctx.arc(cx, headY, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Body
+            ctx.beginPath();
+            ctx.moveTo(cx, bodyTop);
+            ctx.lineTo(cx, bodyBottom);
+            ctx.stroke();
+
+            // Arms
+            ctx.beginPath();
+            ctx.moveTo(cx, bodyTop + 2);
+            ctx.lineTo(cx + player.facing * 10, bodyTop + 7);
+            ctx.moveTo(cx, bodyTop + 2);
+            ctx.lineTo(cx - player.facing * 7, bodyTop + 7);
+            ctx.stroke();
+
+            // Legs
+            ctx.beginPath();
+            ctx.moveTo(cx, bodyBottom);
+            ctx.lineTo(cx - 6, player.y + PLAYER_SIZE);
+            ctx.moveTo(cx, bodyBottom);
+            ctx.lineTo(cx + 6, player.y + PLAYER_SIZE);
+            ctx.stroke();
+
+            // Attack arc
+            if (player.attacking) {
+                ctx.strokeStyle = "#fff0b8";
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.arc(
+                    cx + player.facing * 12,
+                    player.y + 14,
+                    17,
+                    player.facing === 1 ? -0.9 : Math.PI - 0.9,
+                    player.facing === 1 ? 0.9 : Math.PI + 0.9
+                );
+                ctx.stroke();
+            }
+
+            // Name
+            ctx.fillStyle = "#fff4df";
+            ctx.font = "11px Segoe UI, Arial";
+            ctx.textAlign = "center";
+            ctx.fillText(
+                player.id === myId ? "YOU" : "#" + player.id,
+                cx, player.y - 9
+            );
+
+            // Health bar
+            ctx.fillStyle = "#120f19";
+            ctx.fillRect(cx - 17, player.y - 5, 34, 4);
+
+            ctx.fillStyle = player.health > 40 ? "#79d69a" : "#e57972";
+            ctx.fillRect(
+                cx - 17, player.y - 5,
+                34 * Math.max(0, player.health) / 100, 4
+            );
+
+            ctx.restore();
+        }
+
+        function render() {
+            drawBackground();
+            drawPlatforms();
+
+            for (const player of players) {
+                drawPlayer(player);
+            }
+
+            requestAnimationFrame(render);
+        }
+
+        connect();
+        render();
+    </script>
+</body>
+</html>

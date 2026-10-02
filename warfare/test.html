@@ -1,0 +1,269 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Stickman Warfare | Combat Test</title>
+
+    <style>
+        body {
+            background: #171923;
+            color: #f4f4f5;
+            font-family: sans-serif;
+            text-align: center;
+            margin: 24px;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            max-width: 800px;
+            height: auto;
+            margin: 20px auto;
+            border: 2px solid #565b70;
+            background: #252b38;
+        }
+
+        #status {
+            color: #9ee6ad;
+        }
+
+        .controls {
+            color: #c4c8d4;
+        }
+    </style>
+</head>
+<body>
+    <h1>Stickman Warfare</h1>
+    <p id="status">Connecting...</p>
+    <p class="controls">
+        Move: A/D or ←/→ |
+        Jump: W, ↑ or Space |
+        Attack: J
+    </p>
+    <p>Players online: <span id="count">0</span></p>
+
+    <canvas id="arena" width="800" height="450"></canvas>
+
+    <script>
+        const canvas = document.getElementById("arena");
+        const ctx = canvas.getContext("2d");
+        const status = document.getElementById("status");
+        const count = document.getElementById("count");
+
+        const socket = new WebSocket(`ws://${location.host}`);
+
+        let myPlayerId = null;
+        let players = [];
+        let platforms = [];
+
+        const keys = {
+            left: false,
+            right: false,
+            jump: false
+        };
+
+        const keyMap = {
+            KeyA: "left",
+            ArrowLeft: "left",
+            KeyD: "right",
+            ArrowRight: "right",
+            KeyW: "jump",
+            ArrowUp: "jump",
+            Space: "jump"
+        };
+
+        function sendInput() {
+            if (socket.readyState !== WebSocket.OPEN) return;
+
+            socket.send(JSON.stringify({
+                type: "input",
+                ...keys
+            }));
+        }
+
+        function attack() {
+            if (socket.readyState !== WebSocket.OPEN) return;
+
+            socket.send(JSON.stringify({
+                type: "attack"
+            }));
+        }
+
+        window.addEventListener("keydown", event => {
+            const key = keyMap[event.code];
+
+            if (key) {
+                event.preventDefault();
+
+                if (!keys[key]) {
+                    keys[key] = true;
+                    sendInput();
+                }
+
+                return;
+            }
+
+            if (event.code === "KeyJ" && !event.repeat) {
+                event.preventDefault();
+                attack();
+            }
+        });
+
+        window.addEventListener("keyup", event => {
+            const key = keyMap[event.code];
+            if (!key) return;
+
+            event.preventDefault();
+            keys[key] = false;
+            sendInput();
+        });
+
+        window.addEventListener("blur", () => {
+            for (const key of Object.keys(keys)) {
+                keys[key] = false;
+            }
+
+            sendInput();
+        });
+
+        socket.addEventListener("open", () => {
+            status.textContent = "Connected to SW server!";
+        });
+
+        socket.addEventListener("message", event => {
+            const data = JSON.parse(event.data);
+
+            if (data.type === "welcome") {
+                myPlayerId = data.playerId;
+                status.textContent = `You are Player ${myPlayerId}`;
+            }
+
+            if (data.type === "state") {
+                players = data.players;
+                platforms = data.platforms;
+                count.textContent = players.length;
+            }
+        });
+
+        socket.addEventListener("close", () => {
+            status.textContent = "Disconnected from server.";
+        });
+
+        socket.addEventListener("error", () => {
+            status.textContent = "Connection failed. Check the server.";
+        });
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Background grid.
+            ctx.strokeStyle = "#343c4c";
+            ctx.lineWidth = 1;
+
+            for (let x = 0; x <= 800; x += 40) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, 450);
+                ctx.stroke();
+            }
+
+            for (let y = 0; y <= 450; y += 40) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(800, y);
+                ctx.stroke();
+            }
+
+            // Platforms.
+            for (const platform of platforms) {
+                ctx.fillStyle = "#7c879c";
+                ctx.fillRect(
+                    platform.x, platform.y,
+                    platform.width, platform.height
+                );
+
+                ctx.fillStyle = "#a8b4c8";
+                ctx.fillRect(
+                    platform.x, platform.y,
+                    platform.width, 4
+                );
+            }
+
+            // Players.
+            for (const player of players) {
+                if (!player.alive) {
+                    ctx.fillStyle = "#ff7474";
+                    ctx.font = "bold 15px sans-serif";
+                    ctx.textAlign = "center";
+                    ctx.fillText(
+                        `P${player.id} defeated`,
+                        player.x + 14,
+                        player.y + 14
+                    );
+                    continue;
+                }
+
+                const isMe = player.id === myPlayerId;
+
+                // Health bar background.
+                ctx.fillStyle = "#451f2a";
+                ctx.fillRect(player.x - 2, player.y - 17, 32, 6);
+
+                // Health bar foreground.
+                ctx.fillStyle =
+                    player.health > 50 ? "#61e294" : "#ff7474";
+
+                ctx.fillRect(
+                    player.x - 2,
+                    player.y - 17,
+                    32 * Math.max(0, player.health) / 100,
+                    6
+                );
+
+                // Player body.
+                ctx.fillStyle = isMe ? "#61e294" : "#ffb454";
+                ctx.fillRect(player.x, player.y, 28, 28);
+
+                // Facing marker.
+                ctx.fillStyle = "#171923";
+                const markerX = player.facing === 1
+                    ? player.x + 20
+                    : player.x + 4;
+
+                ctx.fillRect(markerX, player.y + 8, 4, 4);
+
+                // Attack indicator.
+                if (player.attacking) {
+                    ctx.fillStyle = "#ffe66d";
+
+                    const attackX = player.facing === 1
+                        ? player.x + 28
+                        : player.x - 16;
+
+                    ctx.fillRect(
+                        attackX,
+                        player.y + 7,
+                        16,
+                        14
+                    );
+                }
+
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "12px sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText(
+                    `P${player.id}`,
+                    player.x + 14,
+                    player.y - 22
+                );
+            }
+
+            requestAnimationFrame(draw);
+        }
+
+        draw();
+    </script>
+</body>
+</html>

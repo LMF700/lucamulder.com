@@ -1,0 +1,765 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#100f19">
+    <title>Stickman Warfare</title>
+
+    <style>
+        :root {
+            --bg: #100f19;
+            --panel: rgba(24, 22, 34, 0.91);
+            --gold: #e8bd72;
+            --gold-light: #ffe4a8;
+            --text: #f5eddf;
+            --muted: #a8a0a0;
+            --border: rgba(232, 189, 114, 0.22);
+            --font: "Segoe UI", Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            overflow-x: hidden;
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font);
+        }
+
+        button, a, input {
+            font: inherit;
+        }
+
+        button, a {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        button:focus-visible, a:focus-visible,
+        input:focus-visible {
+            outline: 2px solid var(--gold-light);
+            outline-offset: 4px;
+        }
+
+        /* Background */
+
+        .scene {
+            position: fixed;
+            inset: 0;
+            overflow: hidden;
+            z-index: -2;
+            background:
+                radial-gradient(ellipse at 75% 20%,
+                    #34304c 0%, #191827 35%, #100f19 76%);
+        }
+
+        .stars {
+            position: absolute;
+            inset: 0;
+            background-image:
+                radial-gradient(1px 1px at 10% 20%, #fff9dd 99%, transparent),
+                radial-gradient(2px 2px at 30% 60%, #fff0cb 99%, transparent),
+                radial-gradient(1px 1px at 55% 12%, #fff 99%, transparent),
+                radial-gradient(1px 1px at 80% 40%, #fff5d5 99%, transparent),
+                radial-gradient(2px 2px at 91% 15%, #fff 99%, transparent),
+                radial-gradient(1px 1px at 65% 75%, #fff 99%, transparent);
+            background-size: 280px 230px;
+            opacity: 0.65;
+            animation: stars 12s ease-in-out infinite alternate;
+        }
+
+        @keyframes stars {
+            from { opacity: 0.35; }
+            to { opacity: 0.8; }
+        }
+
+        .moon {
+            position: absolute;
+            width: 105px;
+            height: 105px;
+            top: 12%;
+            right: 16%;
+            border-radius: 50%;
+            background: #f5dfb0;
+            box-shadow: 0 0 55px rgba(245, 223, 176, 0.17);
+        }
+
+        .moon::after {
+            content: "";
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            top: -13px;
+            left: 28px;
+            border-radius: 50%;
+            background: #262339;
+        }
+
+        .dune {
+            position: absolute;
+            left: -10%;
+            width: 120%;
+            height: 40%;
+            border-radius: 50% 50% 0 0;
+            transform: rotate(-4deg);
+        }
+
+        .dune-back {
+            bottom: 8%;
+            background: linear-gradient(180deg, #373044, #211c2b);
+        }
+
+        .dune-front {
+            bottom: -19%;
+            left: -20%;
+            background: linear-gradient(180deg, #27202a, #17141f);
+            transform: rotate(5deg);
+        }
+
+        .horizon-glow {
+            position: absolute;
+            inset: auto 0 20% 0;
+            height: 1px;
+            background: rgba(232, 189, 114, 0.24);
+            box-shadow: 0 0 55px 16px rgba(232, 189, 114, 0.06);
+        }
+
+        /* Header */
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            padding: 24px clamp(20px, 5vw, 72px);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text);
+            text-decoration: none;
+        }
+
+        .brand-mark {
+            display: grid;
+            place-items: center;
+            width: 42px;
+            height: 42px;
+            border: 1px solid var(--gold);
+            color: var(--gold);
+            font-size: 21px;
+            font-weight: 900;
+            transform: rotate(45deg);
+        }
+
+        .brand-mark span {
+            transform: rotate(-45deg);
+        }
+
+        .brand-name {
+            font-size: 15px;
+            font-weight: 850;
+            letter-spacing: 2px;
+        }
+
+        .brand-subtitle {
+            margin-top: 4px;
+            color: var(--muted);
+            font-size: 10px;
+            letter-spacing: 3px;
+        }
+
+        .server-status {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #b69b60;
+            box-shadow: 0 0 10px currentColor;
+        }
+
+        .server-status.online .status-dot {
+            background: #77d69b;
+        }
+
+        .server-status.offline .status-dot {
+            background: #ed7777;
+        }
+
+        /* Main menu */
+
+        main {
+            width: min(1100px, 100%);
+            min-height: calc(100vh - 150px);
+            margin: 0 auto;
+            padding: 65px 24px 48px;
+            display: grid;
+            grid-template-columns: 1fr 0.8fr;
+            align-items: center;
+            gap: 55px;
+        }
+
+        .eyebrow {
+            color: var(--gold);
+            font-size: 11px;
+            font-weight: 750;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+
+        h1 {
+            margin: 18px 0 0;
+            font-size: clamp(44px, 7vw, 84px);
+            line-height: 0.94;
+            letter-spacing: -3px;
+            font-weight: 950;
+        }
+
+        h1 span {
+            display: block;
+            color: var(--gold);
+        }
+
+        .description {
+            max-width: 420px;
+            margin: 25px 0 30px;
+            color: #c0b9bb;
+            font-size: 15px;
+            line-height: 1.8;
+        }
+
+        .actions {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .button {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            min-height: 49px;
+            padding: 0 24px;
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            background: rgba(255,255,255,0.035);
+            color: var(--text);
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            cursor: pointer;
+            transition:
+                transform 150ms ease,
+                background 150ms ease,
+                border-color 150ms ease;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            border-color: var(--gold);
+            background: rgba(232, 189, 114, 0.09);
+        }
+
+        .button:active {
+            transform: translateY(0);
+        }
+
+        .button-primary {
+            min-width: 230px;
+            min-height: 58px;
+            background: var(--gold);
+            color: #211a19;
+            border-color: var(--gold);
+        }
+
+        .button-primary:hover {
+            background: var(--gold-light);
+            color: #211a19;
+        }
+
+        .button-primary .play-icon {
+            font-size: 17px;
+        }
+
+        .secondary-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 6px;
+        }
+
+        .secondary-actions .button {
+            min-height: 42px;
+            padding: 0 16px;
+            font-size: 10px;
+        }
+
+        .footnote {
+            margin-top: 24px;
+            color: #817984;
+            font-size: 11px;
+            line-height: 1.7;
+        }
+
+        /* Decorative arena preview */
+
+        .preview {
+            position: relative;
+            min-height: 340px;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            overflow: hidden;
+            background:
+                linear-gradient(180deg,
+                    rgba(34, 31, 49, 0.25),
+                    rgba(12, 11, 18, 0.75));
+            box-shadow: 0 24px 90px rgba(0,0,0,0.2);
+        }
+
+        .preview-label {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: var(--gold);
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 3px;
+        }
+
+        .preview-moon {
+            position: absolute;
+            width: 70px;
+            height: 70px;
+            right: 17%;
+            top: 19%;
+            border-radius: 50%;
+            background: #f2ddb0;
+            box-shadow: 0 0 35px rgba(242, 221, 176, 0.2);
+        }
+
+        .preview-platform {
+            position: absolute;
+            height: 9px;
+            background: #806b55;
+            border-bottom: 3px solid #3d3030;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+        }
+
+        .platform-one {
+            bottom: 17%;
+            left: 0;
+            width: 100%;
+        }
+
+        .platform-two {
+            bottom: 36%;
+            left: 12%;
+            width: 27%;
+        }
+
+        .platform-three {
+            bottom: 49%;
+            right: 12%;
+            width: 28%;
+        }
+
+        .fighter {
+            position: absolute;
+            bottom: calc(17% + 9px);
+            width: 4px;
+            height: 39px;
+            background: var(--gold);
+            border-radius: 4px;
+            filter: drop-shadow(0 0 7px rgba(232,189,114,0.35));
+        }
+
+        .fighter::before {
+            content: "";
+            position: absolute;
+            width: 13px;
+            height: 13px;
+            top: -12px;
+            left: -4.5px;
+            border: 2px solid currentColor;
+            border-radius: 50%;
+            background: #1a1722;
+        }
+
+        .fighter::after {
+            content: "";
+            position: absolute;
+            width: 23px;
+            height: 3px;
+            top: 13px;
+            left: -9px;
+            background: currentColor;
+            transform: rotate(-25deg);
+            transform-origin: right;
+        }
+
+        .fighter-one {
+            left: 32%;
+            color: #e8bd72;
+            animation: idle 2.1s ease-in-out infinite;
+        }
+
+        .fighter-two {
+            left: 67%;
+            color: #e37b65;
+            animation: idle 2.4s ease-in-out infinite reverse;
+        }
+
+        @keyframes idle {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+        }
+
+        .preview-caption {
+            position: absolute;
+            right: 18px;
+            bottom: 12px;
+            color: #a59aa1;
+            font-size: 9px;
+            letter-spacing: 2px;
+        }
+
+        footer {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 18px clamp(20px, 5vw, 72px);
+            border-top: 1px solid rgba(255,255,255,0.06);
+            color: #77717c;
+            font-size: 10px;
+            letter-spacing: 1px;
+        }
+
+        /* Dialogs */
+
+        dialog {
+            width: min(440px, calc(100% - 32px));
+            padding: 28px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: #191724;
+            color: var(--text);
+            box-shadow: 0 25px 100px rgba(0,0,0,0.6);
+        }
+
+        dialog::backdrop {
+            background: rgba(4, 3, 9, 0.78);
+            backdrop-filter: blur(5px);
+        }
+
+        dialog h2 {
+            margin-top: 0;
+            color: var(--gold);
+            font-size: 22px;
+        }
+
+        dialog p {
+            color: #c0b9bb;
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
+        .setting-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin: 20px 0;
+        }
+
+        input[type="range"] {
+            width: 145px;
+            accent-color: var(--gold);
+        }
+
+        .dialog-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 25px;
+        }
+
+        @media (max-width: 760px) {
+            header {
+                padding: 18px 20px;
+            }
+
+            main {
+                grid-template-columns: 1fr;
+                gap: 38px;
+                padding-top: 55px;
+            }
+
+            .preview {
+                min-height: 270px;
+            }
+
+            h1 {
+                letter-spacing: -2px;
+            }
+
+            .moon {
+                right: 10%;
+                width: 75px;
+                height: 75px;
+            }
+
+            footer {
+                padding: 18px 20px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="scene" aria-hidden="true">
+        <div class="stars"></div>
+        <div class="moon"></div>
+        <div class="dune dune-back"></div>
+        <div class="horizon-glow"></div>
+        <div class="dune dune-front"></div>
+    </div>
+
+    <header>
+        <a class="brand" href="main.html" aria-label="Stickman Warfare home">
+            <div class="brand-mark"><span>SW</span></div>
+            <div>
+                <div class="brand-name">STICKMAN WARFARE</div>
+                <div class="brand-subtitle">QAMAR DESERT</div>
+            </div>
+        </a>
+
+        <div class="server-status" id="serverStatus"
+             role="status" aria-live="polite">
+            <span class="status-dot"></span>
+            <span id="statusText">Checking server...</span>
+        </div>
+    </header>
+
+    <main>
+        <section>
+            <div class="eyebrow">The desert awaits</div>
+
+            <h1>
+                FIGHT.
+                <span>SURVIVE.</span>
+                CONQUER.
+            </h1>
+
+            <p class="description">
+                Enter the Qamar Desert. Master your abilities,
+                outlast your opponents, and claim victory.
+                Only one fighter leaves the arena standing.
+            </p>
+
+            <div class="actions">
+                <a class="button button-primary" href="match.html">
+                    <span class="play-icon" aria-hidden="true">▶</span>
+                    PLAY
+                </a>
+
+                <div class="secondary-actions">
+                    <button class="button" id="controlsButton">
+                        CONTROLS
+                    </button>
+                    <button class="button" id="settingsButton">
+                        SETTINGS
+                    </button>
+                </div>
+            </div>
+
+            <p class="footnote">
+                Multiplayer combat · Last fighter standing<br>
+                Connection required to enter a match.
+            </p>
+        </section>
+
+        <section class="preview" aria-label="Decorative arena preview">
+            <div class="preview-label">QAMAR DESERT // ARENA 01</div>
+            <div class="preview-moon"></div>
+
+            <div class="preview-platform platform-one"></div>
+            <div class="preview-platform platform-two"></div>
+            <div class="preview-platform platform-three"></div>
+
+            <div class="fighter fighter-one"></div>
+            <div class="fighter fighter-two"></div>
+
+            <div class="preview-caption">ONE ARENA. ONE WINNER.</div>
+        </section>
+    </main>
+
+    <footer>
+        <span>STICKMAN WARFARE</span>
+        <span>DEVELOPED BY LUCA</span>
+        <span>WORK IN PROGRESS</span>
+    </footer>
+
+    <dialog id="controlsDialog">
+        <h2>Combat controls</h2>
+        <p><strong>A / D</strong> or <strong>← / →</strong> to move.</p>
+        <p><strong>W</strong>, <strong>↑</strong>, or <strong>Space</strong> to jump.</p>
+        <p><strong>J</strong> to attack.</p>
+        <p>Face your opponent before attacking. Timing and positioning matter.</p>
+        <div class="dialog-actions">
+            <button class="button button-primary close-dialog">GOT IT</button>
+        </div>
+    </dialog>
+
+    <dialog id="settingsDialog">
+        <h2>Settings</h2>
+
+        <div class="setting-row">
+            <label for="volume">Music volume</label>
+            <input id="volume" type="range" min="0" max="100" value="50">
+        </div>
+
+        <p id="volumeValue">Volume: 50%</p>
+        <p>Volume control is a saved preference placeholder until the game's audio system is connected.</p>
+
+        <div class="dialog-actions">
+            <button class="button button-primary close-dialog">DONE</button>
+        </div>
+    </dialog>
+
+    <script>
+        /*
+         * LOCAL DEVELOPMENT:
+         *   Run your Node.js server on localhost:3000.
+         *
+         * PUBLIC RELEASE:
+         *   Replace the production URL with your actual secure
+         *   WebSocket endpoint, for example:
+         *   wss://your-server.example.com
+         *
+         * Do not use localhost for players on other computers.
+         */
+        const SERVER_URL = location.hostname === "localhost" ||
+                           location.hostname === "127.0.0.1"
+            ? "ws://localhost:3000"
+            : ""; // Set your public wss:// URL here.
+
+        const status = document.getElementById("serverStatus");
+        const statusText = document.getElementById("statusText");
+
+        function setStatus(state, text) {
+            status.classList.remove("online", "offline");
+            if (state) status.classList.add(state);
+            statusText.textContent = text;
+        }
+
+        function checkServer() {
+            if (!SERVER_URL) {
+                setStatus("", "Server not configured");
+                return;
+            }
+
+            setStatus("", "Connecting...");
+
+            let socket;
+
+            try {
+                socket = new WebSocket(SERVER_URL);
+            } catch {
+                setStatus("offline", "Server unavailable");
+                return;
+            }
+
+            const timeout = setTimeout(() => {
+                socket.close();
+                setStatus("offline", "Connection timed out");
+            }, 4000);
+
+            socket.addEventListener("open", () => {
+                clearTimeout(timeout);
+                setStatus("online", "Server reachable");
+                socket.close();
+            });
+
+            socket.addEventListener("error", () => {
+                clearTimeout(timeout);
+                setStatus("offline", "Server unavailable");
+            });
+
+            socket.addEventListener("close", () => {
+                clearTimeout(timeout);
+                if (!status.classList.contains("online")) {
+                    setStatus("offline", "Server unavailable");
+                }
+            });
+        }
+
+        const controlsDialog = document.getElementById("controlsDialog");
+        const settingsDialog = document.getElementById("settingsDialog");
+
+        document.getElementById("controlsButton").addEventListener(
+            "click", () => controlsDialog.showModal()
+        );
+
+        document.getElementById("settingsButton").addEventListener(
+            "click", () => settingsDialog.showModal()
+        );
+
+        document.querySelectorAll(".close-dialog").forEach(button => {
+            button.addEventListener("click", () => {
+                button.closest("dialog").close();
+            });
+        });
+
+        const volume = document.getElementById("volume");
+        const volumeValue = document.getElementById("volumeValue");
+
+        try {
+            const savedVolume = localStorage.getItem("sw-volume");
+            if (savedVolume !== null) volume.value = savedVolume;
+        } catch {
+            // Storage may be unavailable. Settings still work for this session.
+        }
+
+        function updateVolume() {
+            volumeValue.textContent = `Volume: ${volume.value}%`;
+
+            try {
+                localStorage.setItem("sw-volume", volume.value);
+            } catch {
+                // Saving preferences is optional.
+            }
+        }
+
+        volume.addEventListener("input", updateVolume);
+        updateVolume();
+
+        checkServer();
+    </script>
+</body>
+</html>
