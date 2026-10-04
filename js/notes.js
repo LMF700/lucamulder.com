@@ -27,6 +27,7 @@ function refreshNoteList() {
         button.onclick = function () {
 
             currentNote = note;
+            document.dispatchEvent(new CustomEvent("twonote:select", { detail: { noteId: note.id } }));
 
             document.getElementById("noNote").style.display = "none";
             document.getElementById("editor").style.display = "block";
@@ -129,7 +130,7 @@ document.getElementById("delete").onclick = function () {
         JSON.stringify(notes)
     );
 
-
+    document.dispatchEvent(new CustomEvent("twonote:clear"));
     currentNote = null;
 
 
