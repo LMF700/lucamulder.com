@@ -27,8 +27,9 @@ function refreshNoteList() {
         button.onclick = function () {
 
             currentNote = note;
-            document.dispatchEvent(new CustomEvent("twonote:select", { detail: { noteId: note.id } }));
-
+            document.dispatchEvent(new CustomEvent("twonote:select", {
+                detail: { noteId: note.id }
+            }));
             document.getElementById("noNote").style.display = "none";
             document.getElementById("editor").style.display = "block";
 
@@ -54,25 +55,24 @@ document.getElementById("new").onclick = function () {
         body: ""
     };
 
-
     notes.push(note);
 
     currentNote = note;
 
+    document.dispatchEvent(new CustomEvent("twonote:select", {
+        detail: { noteId: note.id }
+    }));
 
     document.getElementById("noNote").style.display = "none";
     document.getElementById("editor").style.display = "block";
 
-
     document.getElementById("title").value = "";
     document.getElementById("body").innerHTML = "";
-
 
     localStorage.setItem(
         "notes",
         JSON.stringify(notes)
     );
-
 
     refreshNoteList();
 
