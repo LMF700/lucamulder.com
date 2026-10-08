@@ -456,6 +456,13 @@ h2 {
     --card-color: #555;
 }
 
+.promo {
+    --card-color: #9b991f;
+    font-family: Verdana !important;
+    font-weight: 700;
+    margin: 10px;
+    color: #9b991f
+}
 
 /* =========================
    MOBILE
