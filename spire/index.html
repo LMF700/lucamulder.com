@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Abandoned Tower</title>
+    <link rel="stylesheet" href="style.css">
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
+        }
+    }
+    </script>
+</head>
+<body>
+    <div id="hud">
+        <div id="title">THE ABANDONED TOWER</div>
+        <div id="height">Height: 0m</div>
+        <div id="lava">Lava: -5m</div>
+        <div id="status">WALKING</div>
+    </div>
+
+    <div id="crosshair"></div>
+    <div id="message"></div>
+
+    <div id="instructions">
+        WASD: Move &nbsp; SHIFT: Sprint &nbsp; SPACE: Jump &nbsp; MOUSE: Look
+    </div>
+
+    <div id="start">
+        <div class="panel">
+            <h1>THE ABANDONED TOWER</h1>
+            <p>The tower is waking up. Keep climbing.</p>
+            <button id="play">ENTER TOWER</button>
+            <p class="small">Click to capture the mouse. Press ESC to pause.</p>
+        </div>
+    </div>
+
+    <script type="module" src="game.js"></script>
+</body>
+</html>

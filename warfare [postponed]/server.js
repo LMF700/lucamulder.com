@@ -1,4 +1,5 @@
 
+// placeholder IPv4: 10.203.132.71
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
@@ -23,9 +24,9 @@ const ROOT = path.join(__dirname, "public");
 
 const platforms = [
     { x: 0, y: 420, width: 800, height: 30 },
-    { x: 100, y: 340, width: 160, height: 18 },
-    { x: 340, y: 280, width: 150, height: 18 },
-    { x: 560, y: 340, width: 150, height: 18 }
+    { x: 100, y: 360, width: 160, height: 18 },
+    { x: 340, y: 300, width: 150, height: 18 },
+    { x: 560, y: 360, width: 150, height: 18 }
 ];
 
 const players = new Map();

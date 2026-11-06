@@ -6,7 +6,7 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: "JetBrains Mono", monospace;
+    font-family: Verdana;
 }
 
 :root {
@@ -29,34 +29,6 @@ body {
 
     background: var(--bg);
     color: var(--text);
-}
-
-
-/* =========================
-   BACKGROUND GRID
-   ========================= */
-
-body::before {
-    content: "";
-
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-
-    pointer-events: none;
-
-    background-image:
-        linear-gradient(
-            rgba(255, 255, 255, 0.02) 1px,
-            transparent 1px
-        ),
-        linear-gradient(
-            90deg,
-            rgba(255, 255, 255, 0.02) 1px,
-            transparent 1px
-        );
-
-    background-size: 40px 40px;
 }
 
 
@@ -131,8 +103,9 @@ nav a:hover {
    HERO
    ========================= */
 
+
 .hero {
-    min-height: 80vh;
+    min-height: 60vh;
 
     display: flex;
     flex-direction: column;
@@ -506,3 +479,36 @@ h2 {
 .sidepage.is-open {
     transform: translateX(0);
 }
+
+
+/* PROPER COLORING FOR SHIT */
+h1 {
+    color: #cd44ef
+}
+
+h2 {
+    color: #ab22cd
+}
+
+h3 {
+    color: #ab00cd
+}
+
+div {
+    h1, h2, h3 {
+        color: #7a4be5
+    }
+}
+b {
+    color: #bc11cd
+}
+
+i {
+    color: #ab00cd
+}
+
+.imp {
+    color: #bc22cd;
+    font-style: italic
+}
+/* Man, CSS really is weird as HELL. Weirder than c++. */

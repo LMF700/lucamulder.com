@@ -1,0 +1,241 @@
+/* TwoNote folder sidebar additions. Kept separate so notesstyle.css stays untouched. */
+
+#sidebar {
+    gap: 8px;
+}
+
+#newFolder {
+    background: #eeeeee;
+    color: inherit;
+    border: none;
+    border-radius: 8px;
+    padding: 10px;
+    cursor: pointer;
+    font-family: Verdana, sans-serif;
+}
+
+body.twilight #newFolder {
+    background: #33264d;
+    color: #f0d9ff;
+}
+
+#themeButtons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+#noteList {
+    margin-top: 7px;
+}
+
+.sidebar-entry {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    width: 100%;
+    min-width: 0;
+}
+
+#noteList .sidebar-card {
+    min-width: 0;
+    flex: 1;
+    width: auto !important;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    box-sizing: border-box;
+    padding: 10px !important;
+    border: none;
+    border-radius: 8px;
+    background: #eeeeee;
+    color: #222;
+    text-align: left;
+    cursor: pointer;
+    font-family: Verdana, sans-serif;
+    transition: background-color 0.2s;
+}
+
+#noteList .sidebar-card:hover {
+    background: #dddddd;
+}
+
+#noteList .sidebar-card.is-selected {
+    outline: 2px solid #0088ff;
+    outline-offset: -2px;
+}
+
+#noteList .sidebar-card.folder-card {
+    border-radius: 0 8px 8px 0;
+}
+
+#noteList .folder-arrow {
+    flex: 0 0 30px;
+    width: 30px;
+    padding: 0;
+    border: none;
+    border-radius: 8px 0 0 8px;
+    background: #eeeeee;
+    color: #444;
+    cursor: pointer;
+    font: 14px Verdana, sans-serif;
+}
+
+#noteList .folder-arrow:hover,
+#noteList .folder-arrow:focus-visible {
+    background: #dddddd;
+}
+
+.folder-arrow-spacer {
+    flex: 0 0 30px;
+    width: 30px;
+}
+
+.folder-symbol {
+    flex: 0 0 auto;
+    font-size: 15px;
+}
+
+.folder-name,
+.note-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.folder-children {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-left: 15px;
+    padding-left: 8px;
+    border-left: 1px solid #ccc;
+}
+
+.folder-rename-input {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 3px 5px;
+    border: 1px solid #0088ff;
+    border-radius: 4px;
+    background: white;
+    color: #222;
+    font: 13px Verdana, sans-serif;
+    outline: none;
+}
+
+body.twilight .sidebar-card,
+body.twilight #noteList .folder-arrow {
+    background: #33264d;
+    color: #f0d9ff;
+}
+
+body.twilight #noteList .sidebar-card:hover,
+body.twilight #noteList .folder-arrow:hover,
+body.twilight #noteList .folder-arrow:focus-visible {
+    background: #463461;
+}
+
+body.twilight .folder-children {
+    border-left-color: #443366;
+}
+
+body.twilight .folder-rename-input {
+    background: #241c38;
+    color: #f0d9ff;
+    border-color: #9c80d6;
+}
+
+/* Folder context menu */
+
+#folderContextMenu {
+    position: fixed;
+    z-index: 10000;
+    min-width: 175px;
+    padding: 6px;
+    border: 1px solid #7775;
+    border-radius: 9px;
+    background: #fff;
+    color: #222;
+    box-shadow: 0 8px 28px #0003;
+    font: 13px Verdana, sans-serif;
+}
+
+#folderContextMenu[hidden] {
+    display: none;
+}
+
+#folderContextMenu button {
+    display: block;
+    width: 100%;
+    padding: 9px 10px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+}
+
+#folderContextMenu button:hover,
+#folderContextMenu button:focus-visible {
+    background: #eeeeee;
+}
+
+#folderContextMenu button.danger {
+    color: #b00020;
+}
+
+#folderContextMenu .menu-divider {
+    height: 1px;
+    margin: 5px 2px;
+    background: #ddd;
+}
+
+body.twilight #folderContextMenu {
+    background: #241c38;
+    color: #f0d9ff;
+    border-color: #443366;
+}
+
+body.twilight #folderContextMenu button:hover,
+body.twilight #folderContextMenu button:focus-visible {
+    background: #463461;
+}
+
+body.twilight #folderContextMenu .menu-divider {
+    background: #443366;
+}
+
+/* Drag-and-drop notes between folders */
+
+#noteList .note-card[draggable="true"] {
+    cursor: grab;
+}
+
+#noteList .note-card.is-dragging {
+    opacity: 0.4;
+    cursor: grabbing;
+}
+
+#noteList .folder-card.note-drop-target,
+#noteList .note-drop-target {
+    outline: 2px dashed var(--accent, #6c9cff);
+    outline-offset: 2px;
+    background-color: rgba(108, 156, 255, 0.13);
+}
+
+#noteList.note-drop-target,
+#noteList .folder-children.note-drop-target {
+    min-height: 42px;
+    border-radius: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #noteList .sidebar-card {
+        transition: none;
+    }
+}

@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fractal Dive</title>
+<style>
+  :root{color-scheme:dark;font-family:Verdana,}
+  *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#05060c}
+  canvas{position:fixed;inset:0;display:block;width:100%;height:100%;touch-action:none}
+  #glView{z-index:0}#triangleView{z-index:0;display:none}
+  #hud{position:fixed;z-index:2;left:16px;top:16px;width:min(365px,calc(100vw - 32px));padding:15px 16px 14px;border:1px solid #ffffff24;border-radius:15px;background:#090d18e8;backdrop-filter:blur(13px);box-shadow:0 10px 36px #0009;user-select:none}
+  .topline{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:7px}h1{margin:0;font-size:16px;letter-spacing:.13em;font-weight:750}
+  .live{font-size:9px;color:#92e7c1;border:1px solid #92e7c144;border-radius:20px;padding:4px 7px;letter-spacing:.1em}
+  p{margin:0 0 12px;color:#aab4ca;font-size:12px;line-height:1.45}label{display:block;margin:0 0 5px;color:#94a1ba;font-size:10px;letter-spacing:.1em;text-transform:uppercase}
+  select{width:100%;padding:9px 10px;color:#edf2ff;background:#151c2b;border:1px solid #ffffff28;border-radius:9px;font:inherit;font-size:12px;outline:none}
+  select:focus-visible,button:focus-visible{outline:2px solid #8ea9ff;outline-offset:2px}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:11px 0 12px}.stat{min-width:0;padding:7px 9px;background:#ffffff0a;border:1px solid #ffffff09;border-radius:8px}
+  .stat small{display:block;color:#8592aa;font-size:9px;text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px}.stat strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:600;color:#e7edff}
+  .buttons{display:flex;flex-wrap:wrap;gap:7px}button{border:1px solid #ffffff24;color:#e8edff;background:#ffffff10;border-radius:8px;padding:7px 10px;font:inherit;font-size:11px;cursor:pointer}button:hover{background:#ffffff20}
+  .help{margin-top:11px;padding-top:10px;border-top:1px solid #ffffff16;color:#9ca9c1;font-size:10px;line-height:1.65}.key{display:inline-block;min-width:18px;padding:1px 4px;text-align:center;color:#e5ebff;background:#ffffff12;border:1px solid #ffffff25;border-radius:4px;font-size:9px}
+  #hint{position:fixed;z-index:1;right:17px;bottom:15px;color:#bac5d9cc;font-size:11px;text-align:right;pointer-events:none;text-shadow:0 1px 5px #000}
+  #notice{display:none;margin-top:10px;padding:9px 10px;border-radius:8px;background:#55361e99;border:1px solid #d99e5144;color:#ffe0b5;font-size:11px;line-height:1.45}
+  #fatal{display:none;position:fixed;z-index:5;inset:auto 16px 16px 16px;color:#ffd2d2;background:#501d2add;padding:12px;border-radius:10px;font-size:12px;line-height:1.5}
+  @media(max-width:520px){#hud{top:9px;left:9px;width:min(330px,calc(100vw - 18px));padding:12px}#hint{right:10px;bottom:9px;font-size:10px}}
+</style>
+</head>
+<body>
+<canvas id="glView" aria-label="Interactive fractal viewport"></canvas>
+<canvas id="triangleView" aria-label="Interactive Sierpinski triangle viewport"></canvas>
+<section id="hud">
+  <div class="topline"><h1>FRACTAL DIVE</h1><span class="live">LIVE RENDER</span></div>
+  <p>Choose a fractal and explore it. The visible view is recalculated as you move instead of storing an ever-growing world.</p>
+  <label for="fractalSelect">Fractal</label>
+  <select id="fractalSelect">
+    <option value="mandelbrot">Mandelbrot set · 2D</option>
+    <option value="menger">Menger sponge · 3D cube fractal</option>
+    <option value="sierpinski">Sierpiński triangle · 2D</option>
+  </select>
+  <div class="stats">
+    <div class="stat"><small id="statOneLabel">Zoom</small><strong id="statOne">1.00×</strong></div>
+    <div class="stat"><small id="statTwoLabel">Iterations</small><strong id="statTwo">160</strong></div>
+    <div class="stat"><small>Render scale</small><strong id="renderScale">75%</strong></div>
+    <div class="stat"><small>Renderer</small><strong id="renderer">Starting…</strong></div>
+  </div>
+  <div class="buttons">
+    <button id="reset">Reset view</button><button id="zoomOut">− Zoom</button><button id="zoomIn">+ Zoom</button><button id="quality">Quality: Auto</button>
+  </div>
+  <div class="help" id="controlsHelp">Scroll to zoom towards cursor · Drag to pan · Double-click to zoom in</div>
+  <div id="notice"></div>
+</section>
+<div id="hint">Scroll to zoom · Drag to pan · Double-click to zoom in</div>
+<div id="fatal"></div>
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const glCanvas = $('glView'), triCanvas = $('triangleView');
+  const fatal = $('fatal'), notice = $('notice');
+  const select = $('fractalSelect');
+  const gl = glCanvas.getContext('webgl', {antialias:false, alpha:false, depth:false, stencil:false, powerPreference:'high-performance'});
+
+  const vertexSource = `
+    attribute vec2 position;
+    void main(){ gl_Position=vec4(position,0.0,1.0); }
+  `;
+  const mandelbrotSource = `
+    precision highp float;
+    uniform vec2 resolution;
+    uniform vec2 center;
+    uniform float zoom;
+    uniform int maxIter;
+    vec3 palette(float t){
+      return 0.52+0.48*cos(6.28318*(vec3(0.02,0.32,0.62)+t*vec3(1.0,0.82,0.68)));
+    }
+    void main(){
+      vec2 uv=(gl_FragCoord.xy-0.5*resolution)/resolution.y;
+      vec2 c=center+uv*(2.7/zoom);
+      vec2 z=vec2(0.0);
+      float iter=0.0, m2=0.0;
+      for(int i=0;i<700;i++){
+        if(i>=maxIter || m2>256.0) break;
+        z=vec2(z.x*z.x-z.y*z.y,2.0*z.x*z.y)+c;
+        m2=dot(z,z); iter+=1.0;
+      }
+      vec3 color;
+      if(m2<=256.0) color=vec3(0.008,0.012,0.028);
+      else{
+        float smoothIter=iter+1.0-log2(max(1.0,log2(max(1.0001,m2))));
+        color=palette((smoothIter/float(maxIter))*2.6);
+        color*=0.82+0.18*cos(uv.y*3.0);
+      }
+      gl_FragColor=vec4(color,1.0);
+    }
+  `;
+  const mengerSource = `
+    precision highp float;
+    uniform vec2 resolution;
+    uniform vec3 cameraPos,cameraForward,cameraRight,cameraUp;
+    float sdBox(vec3 p,vec3 b){
+      vec3 q=abs(p)-b;
+      return length(max(q,vec3(0.0)))+min(max(q.x,max(q.y,q.z)),0.0);
+    }
+    float mengerDE(vec3 p){
+      float d=sdBox(p,vec3(1.0));
+      float s=1.0;
+      for(int i=0;i<4;i++){
+        vec3 a=mod(p*s,2.0)-1.0;
+        s*=3.0;
+        vec3 r=abs(1.0-3.0*abs(a));
+        float cut=(min(max(r.x,r.y),min(max(r.y,r.z),max(r.z,r.x)))-1.0)/s;
+        d=max(d,cut);
+      }
+      return d;
+    }
+    vec3 getNormal(vec3 p){
+      float e=0.002;
+      return normalize(vec3(
+        mengerDE(p+vec3(e,0.0,0.0))-mengerDE(p-vec3(e,0.0,0.0)),
+        mengerDE(p+vec3(0.0,e,0.0))-mengerDE(p-vec3(0.0,e,0.0)),
+        mengerDE(p+vec3(0.0,0.0,e))-mengerDE(p-vec3(0.0,0.0,e))));
+    }
+    void main(){
+      vec2 uv=(gl_FragCoord.xy-0.5*resolution)/resolution.y;
+      vec3 rd=normalize(cameraForward+uv.x*cameraRight*1.25+uv.y*cameraUp*1.25);
+      float travel=0.0,dist=0.0; bool hit=false; vec3 p=cameraPos;
+      for(int i=0;i<112;i++){
+        p=cameraPos+rd*travel;
+        dist=mengerDE(p);
+        if(dist<0.0018){hit=true;break;}
+        travel+=clamp(dist*0.78,0.0015,0.5);
+        if(travel>18.0)break;
+      }
+      vec3 color=vec3(0.012,0.018,0.035);
+      if(hit){
+        vec3 n=getNormal(p), lightDir=normalize(vec3(-0.55,0.85,-0.45));
+        float diffuse=max(dot(n,lightDir),0.0);
+        float rim=pow(1.0-max(dot(n,-rd),0.0),3.0);
+        float bands=0.5+0.5*cos(5.5*p.y+3.5*p.x);
+        vec3 base=mix(vec3(0.10,0.34,0.62),vec3(0.18,0.76,0.72),bands*0.45+0.25);
+        color=base*(0.25+0.75*diffuse)+vec3(0.22,0.48,0.85)*rim*0.5;
+        color*=1.0-0.15*min(travel/12.0,1.0);
+      }
+      float vignette=1.0-0.2*smoothstep(0.35,1.15,length(uv));
+      gl_FragColor=vec4(color*vignette,1.0);
+    }
+  `;
+
+  let glReady=false, programs=null, buffer=null;
+  function compileShader(type,source){
+    const shader=gl.createShader(type); gl.shaderSource(shader,source); gl.compileShader(shader);
+    if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS)){
+      const message=gl.getShaderInfoLog(shader)||'Unknown shader compilation error'; gl.deleteShader(shader); throw new Error(message);
+    }
+    return shader;
+  }
+  function createProgram(fragment){
+    const p=gl.createProgram();
+    const vs=compileShader(gl.VERTEX_SHADER,vertexSource), fs=compileShader(gl.FRAGMENT_SHADER,fragment);
+    gl.attachShader(p,vs);gl.attachShader(p,fs);gl.linkProgram(p);
+    gl.deleteShader(vs);gl.deleteShader(fs);
+    if(!gl.getProgramParameter(p,gl.LINK_STATUS)){
+      const message=gl.getProgramInfoLog(p)||'Unknown shader link error';gl.deleteProgram(p);throw new Error(message);
+    }
+    return p;
+  }
+  if(gl){
+    try{
+      programs={mandel:createProgram(mandelbrotSource),menger:createProgram(mengerSource)};
+      buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
+      gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);
+      glReady=true;
+    }catch(err){
+      notice.style.display='block';notice.textContent='WebGL could not initialise: '+err.message+' The Sierpiński triangle will still work.';
+    }
+  }else{
+    notice.style.display='block';notice.textContent='WebGL is unavailable in this browser. The Sierpiński triangle still works; enable hardware acceleration for the other views.';
+  }
+
+  let mode='mandelbrot', cx=-0.5, cy=0, zoom=1, triX=0, triY=0, triZoom=1;
+  let yaw=-0.704,pitch=-0.36,camera=[2.8,1.9,3.3];
+  let renderScale=0.75,quality='auto',dirty=true,dragging=false,lastX=0,lastY=0;
+  let lastTime=performance.now(),fps=50,frameCount=0;
+  const keys=new Set();
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  const statOneLabel=$('statOneLabel'),statOne=$('statOne'),statTwoLabel=$('statTwoLabel'),statTwo=$('statTwo');
+
+  function iterations(){return Math.min(680,Math.max(120,Math.floor(150+Math.log2(zoom+1)*38)));}
+  function basis(){
+    const cp=Math.cos(pitch),sp=Math.sin(pitch),sy=Math.sin(yaw),cyaw=Math.cos(yaw);
+    return {forward:[sy*cp,sp,-cyaw*cp],right:[cyaw,0,sy],up:[sy*sp,cp,-cyaw*sp]};
+  }
+  function setCanvasSize(){
+    const dpr=Math.min(window.devicePixelRatio||1,1.75),ratio=dpr*renderScale;
+    const w=Math.max(1,Math.floor(innerWidth*ratio)),h=Math.max(1,Math.floor(innerHeight*ratio));
+    for(const canvas of [glCanvas,triCanvas]){if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}}
+    if(glReady)gl.viewport(0,0,glCanvas.width,glCanvas.height);
+    dirty=true;
+  }
+  function bindProgram(program){
+    gl.useProgram(program);gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
+    const loc=gl.getAttribLocation(program,'position');gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+  }
+  function drawMandel(){
+    const p=programs.mandel;bindProgram(p);
+    gl.uniform2f(gl.getUniformLocation(p,'resolution'),glCanvas.width,glCanvas.height);
+    gl.uniform2f(gl.getUniformLocation(p,'center'),cx,cy);
+    gl.uniform1f(gl.getUniformLocation(p,'zoom'),zoom);
+    gl.uniform1i(gl.getUniformLocation(p,'maxIter'),iterations());
+    gl.drawArrays(gl.TRIANGLES,0,6);
+    statOneLabel.textContent='Zoom';statOne.textContent=zoom.toExponential(2)+'×';
+    statTwoLabel.textContent='Iterations';statTwo.textContent=iterations();$('renderer').textContent='WebGL · 2D';
+  }
+  function drawMenger(){
+    const p=programs.menger;bindProgram(p);const b=basis();
+    gl.uniform2f(gl.getUniformLocation(p,'resolution'),glCanvas.width,glCanvas.height);
+    gl.uniform3f(gl.getUniformLocation(p,'cameraPos'),camera[0],camera[1],camera[2]);
+    gl.uniform3f(gl.getUniformLocation(p,'cameraForward'),...b.forward);
+    gl.uniform3f(gl.getUniformLocation(p,'cameraRight'),...b.right);
+    gl.uniform3f(gl.getUniformLocation(p,'cameraUp'),...b.up);
+    gl.drawArrays(gl.TRIANGLES,0,6);
+    statOneLabel.textContent='Camera position';statOne.textContent=camera.map(v=>v.toFixed(1)).join(', ');
+    statTwoLabel.textContent='Recursive cuts';statTwo.textContent='4 levels';$('renderer').textContent='WebGL · 3D';
+  }
+  function trianglePath(ctx,a,b,c){ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.lineTo(c[0],c[1]);ctx.closePath();}
+  function drawSierpinski(ctx,a,b,c,depth,bounds){
+    const minX=Math.min(a[0],b[0],c[0]),maxX=Math.max(a[0],b[0],c[0]);
+    const minY=Math.min(a[1],b[1],c[1]),maxY=Math.max(a[1],b[1],c[1]);
+    if(maxX<bounds.left||minX>bounds.right||maxY<bounds.top||minY>bounds.bottom)return;
+    if(depth<=0){trianglePath(ctx,a,b,c);ctx.fill();return;}
+    const ab=[(a[0]+b[0])/2,(a[1]+b[1])/2],bc=[(b[0]+c[0])/2,(b[1]+c[1])/2],ca=[(c[0]+a[0])/2,(c[1]+a[1])/2];
+    drawSierpinski(ctx,a,ab,ca,depth-1,bounds);
+    drawSierpinski(ctx,ab,b,bc,depth-1,bounds);
+    drawSierpinski(ctx,ca,bc,c,depth-1,bounds);
+  }
+  function drawTriangle(){
+    const ctx=triCanvas.getContext('2d');if(!ctx)return;
+    const dpr=Math.min(window.devicePixelRatio||1,1.75)*renderScale;
+    ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#05060c';ctx.fillRect(0,0,innerWidth,innerHeight);
+    const scale=Math.min(innerWidth,innerHeight)*1.28*triZoom;
+    ctx.save();ctx.translate(innerWidth/2-triX*scale,innerHeight/2-triY*scale);ctx.scale(scale,scale);
+    const top=[0,-0.52],left=[-0.5,0.38],right=[0.5,0.38];
+    ctx.fillStyle='#0d1628';trianglePath(ctx,top,left,right);ctx.fill();
+    const depth=clamp(7+Math.floor(Math.log2(triZoom)),7,20);
+    const bounds={left:triX-innerWidth/(2*scale),right:triX+innerWidth/(2*scale),top:triY-innerHeight/(2*scale),bottom:triY+innerHeight/(2*scale)};
+    ctx.fillStyle='#80d8d0';drawSierpinski(ctx,top,left,right,depth,bounds);ctx.restore();
+    statOneLabel.textContent='Zoom';statOne.textContent=triZoom.toExponential(2)+'×';
+    statTwoLabel.textContent='Triangle depth';statTwo.textContent=depth;$('renderer').textContent='Canvas · 2D';
+  }
+  function updateHelp(){
+    if(mode==='menger'){
+      $('controlsHelp').innerHTML='<span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> move · Mouse look · <span class="key">Space</span>/<span class="key">C</span> up/down · <span class="key">Shift</span> sprint · Esc releases mouse';
+      $('hint').textContent=document.pointerLockElement===glCanvas?'WASD move · Mouse look · Space/C rise and fall · Esc to release':'Click the 3D view to capture mouse · WASD to move';
+    }else{
+      $('controlsHelp').textContent='Scroll to zoom towards cursor · Drag to pan · Double-click to zoom in';
+      $('hint').textContent='Scroll to zoom · Drag to pan · Double-click to zoom in';
+    }
+  }
+  function switchMode(next){
+    mode=next;const tri=mode==='sierpinski';
+    triCanvas.style.display=tri?'block':'none';glCanvas.style.display=tri?'none':'block';
+    if(document.pointerLockElement&&document.exitPointerLock)document.exitPointerLock();
+    $('zoomIn').textContent=mode==='menger'?'+ Move':'+ Zoom';$('zoomOut').textContent=mode==='menger'?'− Move':'− Zoom';
+    if(!glReady&&!tri){notice.style.display='block';}else if(glReady){notice.style.display='none';}
+    updateHelp();dirty=true;if(tri)drawTriangle();
+  }
+  function reset(){
+    if(mode==='mandelbrot'){cx=-0.5;cy=0;zoom=1;}
+    else if(mode==='sierpinski'){triX=0;triY=0;triZoom=1;drawTriangle();}
+    else{camera=[2.8,1.9,3.3];yaw=-0.704;pitch=-0.36;}
+    dirty=true;
+  }
+  function zoom2D(factor,x=innerWidth/2,y=innerHeight/2){
+    if(mode==='mandelbrot'){
+      const old=2.7/zoom,nx=(x-innerWidth/2)/innerHeight,ny=(innerHeight/2-y)/innerHeight;
+      const bx=cx+nx*old,by=cy+ny*old;zoom=clamp(zoom*factor,0.25,1e8);
+      const span=2.7/zoom;cx=bx-nx*span;cy=by-ny*span;
+    }else if(mode==='sierpinski'){
+      const old=1/(Math.min(innerWidth,innerHeight)*1.28*triZoom);
+      const bx=triX+(x-innerWidth/2)*old,by=triY+(y-innerHeight/2)*old;
+      triZoom=clamp(triZoom*factor,0.2,1e6);
+      const span=1/(Math.min(innerWidth,innerHeight)*1.28*triZoom);
+      triX=bx-(x-innerWidth/2)*span;triY=by-(y-innerHeight/2)*span;drawTriangle();
+    }
+    dirty=true;
+  }
+  for(const canvas of [glCanvas,triCanvas]){
+    canvas.addEventListener('wheel',e=>{if(mode==='menger')return;e.preventDefault();zoom2D(Math.exp(-e.deltaY*0.0011),e.clientX,e.clientY);},{passive:false});
+    canvas.addEventListener('pointerdown',e=>{
+      if(mode==='menger'){
+        if(canvas===glCanvas&&document.pointerLockElement!==glCanvas&&glCanvas.requestPointerLock)glCanvas.requestPointerLock();
+        return;
+      }
+      dragging=true;lastX=e.clientX;lastY=e.clientY;canvas.setPointerCapture(e.pointerId);
+    });
+    canvas.addEventListener('pointermove',e=>{
+      if(mode==='menger'||!dragging)return;
+      const dx=e.clientX-lastX,dy=e.clientY-lastY,span=mode==='mandelbrot'?2.7/zoom:1/(Math.min(innerWidth,innerHeight)*1.28*triZoom);
+      if(mode==='mandelbrot'){cx-=dx/innerHeight*span;cy+=dy/innerHeight*span;}
+      else{triX-=dx*span;triY-=dy*span;drawTriangle();}
+      lastX=e.clientX;lastY=e.clientY;dirty=true;
+    });
+    canvas.addEventListener('pointerup',()=>dragging=false);canvas.addEventListener('pointercancel',()=>dragging=false);
+    canvas.addEventListener('dblclick',e=>{if(mode!=='menger')zoom2D(3,e.clientX,e.clientY);});
+  }
+  document.addEventListener('pointerlockchange',updateHelp);
+  document.addEventListener('mousemove',e=>{if(mode==='menger'&&document.pointerLockElement===glCanvas){yaw+=e.movementX*0.0022;pitch=clamp(pitch-e.movementY*0.0022,-1.52,1.52);dirty=true;}});
+  document.addEventListener('keydown',e=>{
+    if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName))return;
+    const k=e.key.toLowerCase();if(['w','a','s','d',' ','c','e','q','shift'].includes(k))e.preventDefault();keys.add(k);
+  });
+  document.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));window.addEventListener('blur',()=>keys.clear());
+
+  function moveCamera(dt){
+    if(mode!=='menger'||!glReady)return;
+    const b=basis(),speed=keys.has('shift')?7.0:2.5;
+    let f=(keys.has('w')?1:0)-(keys.has('s')?1:0),r=(keys.has('d')?1:0)-(keys.has('a')?1:0);
+    let v=(keys.has(' ')||keys.has('e')?1:0)-(keys.has('c')||keys.has('q')?1:0);
+    const length=Math.hypot(f,r,v)||1;f/=length;r/=length;v/=length;
+    if(f||r||v){camera[0]+=(b.forward[0]*f+b.right[0]*r)*speed*dt;camera[1]+=(b.forward[1]*f+v)*speed*dt;camera[2]+=(b.forward[2]*f+b.right[2]*r)*speed*dt;dirty=true;}
+  }
+  function render(now){
+    const dt=Math.min(0.06,Math.max(0,(now-lastTime)/1000));lastTime=now;
+    if(dt>0)fps=fps*0.9+(1/dt)*0.1;
+    moveCamera(dt);frameCount++;
+    if(quality==='auto'&&frameCount%90===0&&mode==='menger'){
+      const next=fps<24?Math.max(0.4,renderScale-0.1):fps>48?Math.min(0.85,renderScale+0.05):renderScale;
+      if(Math.abs(next-renderScale)>0.01){renderScale=next;setCanvasSize();}
+    }
+    if(dirty){
+      if(mode==='sierpinski')drawTriangle();
+      else if(glReady){if(mode==='mandelbrot')drawMandel();else drawMenger();}
+      dirty=false;
+      $('renderScale').textContent=Math.round(renderScale*100)+'%';
+    }
+    requestAnimationFrame(render);
+  }
+  select.addEventListener('change',()=>switchMode(select.value));
+  $('reset').addEventListener('click',reset);
+  $('zoomIn').addEventListener('click',()=>{if(mode==='menger'){const f=basis().forward;camera=camera.map((v,i)=>v+f[i]*0.5);dirty=true;}else zoom2D(2);});
+  $('zoomOut').addEventListener('click',()=>{if(mode==='menger'){const f=basis().forward;camera=camera.map((v,i)=>v-f[i]*0.5);dirty=true;}else zoom2D(0.5);});
+  $('quality').addEventListener('click',e=>{
+    quality=quality==='auto'?'full':'auto';renderScale=quality==='full'?1:0.75;
+    e.currentTarget.textContent='Quality: '+(quality==='auto'?'Auto':'Full');setCanvasSize();
+  });
+  window.addEventListener('resize',()=>{setCanvasSize();if(mode==='sierpinski')drawTriangle();});
+  setCanvasSize();updateHelp();
+  if(!glReady&&mode!=='sierpinski')$('renderer').textContent='WebGL unavailable';
+  else $('renderer').textContent=glReady?'WebGL · 2D':'Canvas · 2D';
+  requestAnimationFrame(render);
+})();
+</script>
+</body>
+</html>

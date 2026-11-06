@@ -1,0 +1,319 @@
+/* BiNote Sprawl interface */
+
+.sprawl-icon {
+    width: 19px;
+    height: 19px;
+    object-fit: contain;
+    flex: 0 0 19px;
+}
+
+#noteList .sprawlshelf-card {
+    font-weight: 600;
+}
+
+#sprawlCreateMenu,
+#sprawlNoteMenu {
+    position: fixed;
+    z-index: 11000;
+    min-width: 190px;
+    padding: 6px;
+    border: 1px solid #7775;
+    border-radius: 9px;
+    background: #fff;
+    color: #222;
+    box-shadow: 0 8px 28px #0003;
+    font: 13px Verdana, sans-serif;
+}
+
+#sprawlCreateMenu[hidden],
+#sprawlNoteMenu[hidden],
+#sprawlShelfBar[hidden],
+#sprawlerView[hidden] {
+    display: none;
+}
+
+#sprawlCreateMenu button,
+#sprawlNoteMenu button {
+    display: block;
+    width: 100%;
+    padding: 9px 10px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+}
+
+#sprawlCreateMenu button:hover,
+#sprawlNoteMenu button:hover {
+    background: #eeeeee;
+}
+
+#sprawlShelfBar {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 48px;
+    padding: 6px 8px;
+    overflow-x: auto;
+    border-top: 1px solid #ccc;
+    background: #f4f4f4;
+}
+
+.sprawl-shelf-label {
+    flex: 0 0 auto;
+    margin-right: 8px;
+    font-size: 12px;
+    font-weight: bold;
+    opacity: .7;
+}
+
+.sprawl-shelf-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    flex: 0 0 auto;
+    max-width: 210px;
+    padding: 8px 12px;
+    border: 1px solid transparent;
+    border-radius: 8px 8px 0 0;
+    background: #e5e5e5;
+    color: #222;
+    cursor: pointer;
+    font: 13px Verdana, sans-serif;
+}
+
+.sprawl-shelf-tab span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sprawl-shelf-tab.is-active {
+    border-color: #bbb;
+    border-bottom-color: #fff;
+    background: #fff;
+    font-weight: bold;
+}
+
+#sprawlLandingStatus {
+    flex: 0 0 auto;
+    margin: 0 0 10px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    background: #e6f2ff;
+    color: #24547c;
+    font-size: 12px;
+}
+
+#sprawlerView {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    box-sizing: border-box;
+}
+
+.sprawler-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+
+.sprawler-title {
+    flex: 1;
+    min-width: 120px;
+    padding: 9px 10px;
+    border: 1px solid #ccc;
+    border-radius: 7px;
+    background: transparent;
+    color: inherit;
+    font: bold 18px Verdana, sans-serif;
+}
+
+.sprawler-toolbar button {
+    padding: 8px 11px;
+    border: 0;
+    border-radius: 7px;
+    background: #e7e7e7;
+    color: #222;
+    cursor: pointer;
+    font: 12px Verdana, sans-serif;
+}
+
+.sprawler-formula-bar {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    flex: 0 0 auto;
+}
+
+.sprawler-formula-bar span {
+    min-width: 48px;
+    font: bold 13px monospace;
+}
+
+.sprawler-formula-bar input {
+    flex: 1;
+    min-width: 0;
+    padding: 7px 9px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    font: 13px monospace;
+}
+
+.sprawler-grid-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    border: 1px solid #c9c9c9;
+    border-radius: 7px;
+    background: #fff;
+}
+
+.sprawler-grid {
+    width: max-content;
+    min-width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: fixed;
+    color: #222;
+    font: 13px Verdana, sans-serif;
+}
+
+.sprawler-grid th {
+    position: sticky;
+    z-index: 1;
+    top: 0;
+    min-width: 105px;
+    height: 28px;
+    padding: 3px 6px;
+    border-right: 1px solid #d5d5d5;
+    border-bottom: 1px solid #c7c7c7;
+    background: #eeeeee;
+    color: #444;
+    font-weight: normal;
+    text-align: center;
+}
+
+.sprawler-grid th:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    min-width: 42px;
+    width: 42px;
+}
+
+.sprawler-grid td {
+    min-width: 105px;
+    height: 30px;
+    padding: 0;
+    border-right: 1px solid #e0e0e0;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.sprawler-grid tbody th {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    min-width: 42px;
+    width: 42px;
+}
+
+.sprawler-cell {
+    display: block;
+    width: 100%;
+    height: 30px;
+    box-sizing: border-box;
+    padding: 5px 7px;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: #222;
+    font: 13px Verdana, sans-serif;
+}
+
+.sprawler-cell:focus {
+    outline: 2px solid #1688ff;
+    outline-offset: -2px;
+    background: #f4f9ff;
+}
+
+body.twilight #sprawlCreateMenu,
+body.twilight #sprawlNoteMenu {
+    border-color: #443366;
+    background: #241c38;
+    color: #f0d9ff;
+}
+
+body.twilight #sprawlCreateMenu button:hover,
+body.twilight #sprawlNoteMenu button:hover {
+    background: #463461;
+}
+
+body.twilight #sprawlShelfBar {
+    border-color: #443366;
+    background: #211a32;
+}
+
+body.twilight .sprawl-shelf-tab {
+    background: #33264d;
+    color: #f0d9ff;
+}
+
+body.twilight .sprawl-shelf-tab.is-active {
+    border-color: #66528a;
+    border-bottom-color: #241c38;
+    background: #241c38;
+}
+
+body.twilight #sprawlLandingStatus {
+    background: #33264d;
+    color: #e4d5ff;
+}
+
+body.twilight .sprawler-title,
+body.twilight .sprawler-formula-bar input {
+    border-color: #66528a;
+}
+
+body.twilight .sprawler-toolbar button {
+    background: #33264d;
+    color: #f0d9ff;
+}
+
+@media (max-width: 700px) {
+    #sprawlShelfBar {
+        gap: 4px;
+        padding-inline: 5px;
+    }
+
+    .sprawl-shelf-label {
+        display: none;
+    }
+
+    .sprawl-shelf-tab {
+        padding: 7px 9px;
+    }
+
+    .sprawler-toolbar {
+        flex-wrap: wrap;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #sprawlCreateMenu,
+    #sprawlNoteMenu,
+    .sprawl-shelf-tab {
+        transition: none;
+    }
+}
