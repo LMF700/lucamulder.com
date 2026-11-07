@@ -3,351 +3,958 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Fractal Dive</title>
+<meta name="theme-color" content="#080b14">
+<title>Mandelbrot Deep Explorer</title>
 <style>
-  :root{color-scheme:dark;font-family:Verdana,}
-  *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#05060c}
-  canvas{position:fixed;inset:0;display:block;width:100%;height:100%;touch-action:none}
-  #glView{z-index:0}#triangleView{z-index:0;display:none}
-  #hud{position:fixed;z-index:2;left:16px;top:16px;width:min(365px,calc(100vw - 32px));padding:15px 16px 14px;border:1px solid #ffffff24;border-radius:15px;background:#090d18e8;backdrop-filter:blur(13px);box-shadow:0 10px 36px #0009;user-select:none}
-  .topline{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:7px}h1{margin:0;font-size:16px;letter-spacing:.13em;font-weight:750}
-  .live{font-size:9px;color:#92e7c1;border:1px solid #92e7c144;border-radius:20px;padding:4px 7px;letter-spacing:.1em}
-  p{margin:0 0 12px;color:#aab4ca;font-size:12px;line-height:1.45}label{display:block;margin:0 0 5px;color:#94a1ba;font-size:10px;letter-spacing:.1em;text-transform:uppercase}
-  select{width:100%;padding:9px 10px;color:#edf2ff;background:#151c2b;border:1px solid #ffffff28;border-radius:9px;font:inherit;font-size:12px;outline:none}
-  select:focus-visible,button:focus-visible{outline:2px solid #8ea9ff;outline-offset:2px}
-  .stats{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:11px 0 12px}.stat{min-width:0;padding:7px 9px;background:#ffffff0a;border:1px solid #ffffff09;border-radius:8px}
-  .stat small{display:block;color:#8592aa;font-size:9px;text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px}.stat strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:600;color:#e7edff}
-  .buttons{display:flex;flex-wrap:wrap;gap:7px}button{border:1px solid #ffffff24;color:#e8edff;background:#ffffff10;border-radius:8px;padding:7px 10px;font:inherit;font-size:11px;cursor:pointer}button:hover{background:#ffffff20}
-  .help{margin-top:11px;padding-top:10px;border-top:1px solid #ffffff16;color:#9ca9c1;font-size:10px;line-height:1.65}.key{display:inline-block;min-width:18px;padding:1px 4px;text-align:center;color:#e5ebff;background:#ffffff12;border:1px solid #ffffff25;border-radius:4px;font-size:9px}
-  #hint{position:fixed;z-index:1;right:17px;bottom:15px;color:#bac5d9cc;font-size:11px;text-align:right;pointer-events:none;text-shadow:0 1px 5px #000}
-  #notice{display:none;margin-top:10px;padding:9px 10px;border-radius:8px;background:#55361e99;border:1px solid #d99e5144;color:#ffe0b5;font-size:11px;line-height:1.45}
-  #fatal{display:none;position:fixed;z-index:5;inset:auto 16px 16px 16px;color:#ffd2d2;background:#501d2add;padding:12px;border-radius:10px;font-size:12px;line-height:1.5}
-  @media(max-width:520px){#hud{top:9px;left:9px;width:min(330px,calc(100vw - 18px));padding:12px}#hint{right:10px;bottom:9px;font-size:10px}}
+  :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, "Segoe UI", sans-serif; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; width:100%; height:100%; overflow:hidden; background:#05070d; color:#edf2ff; }
+  canvas { display:block; width:100%; height:100%; touch-action:none; cursor:crosshair; }
+  .panel {
+    position:fixed; z-index:3; top:16px; left:16px; width:min(360px,calc(100vw - 32px));
+    padding:16px; border:1px solid #ffffff20; border-radius:16px;
+    background:linear-gradient(145deg,#111a2aee,#080d18ed);
+    box-shadow:0 16px 48px #0009; backdrop-filter:blur(14px);
+    max-height:calc(100vh - 32px); overflow:auto;
+    transition:opacity .18s ease, transform .18s ease;
+  }
+  .brand { display:flex; align-items:center; gap:10px; margin-bottom:5px; }
+  .mark { width:29px; height:29px; border-radius:9px; display:grid; place-items:center;
+    background:linear-gradient(135deg,#8582ff,#39d6ce); color:#081019; font-size:20px; font-weight:900; }
+  h1 { margin:0; font-size:15px; letter-spacing:.075em; font-weight:850; }
+  .sub { margin:0 0 13px; color:#aab8d0; font-size:11px; line-height:1.5; }
+  label { display:block; color:#aab8d0; font-size:10px; text-transform:uppercase; letter-spacing:.1em; margin:12px 0 6px; }
+  select, button, input[type="range"] { font:inherit; }
+  select {
+    width:100%; padding:9px 10px; color:#edf2ff; background:#ffffff0c; border:1px solid #ffffff24;
+    border-radius:9px; outline:none; font-size:12px;
+  }
+  select option { background:#101827; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+  .readout { min-width:0; padding:9px 10px; border-radius:9px; background:#ffffff09; border:1px solid #ffffff0c; }
+  .readout small { display:block; margin-bottom:4px; color:#8393ae; font-size:9px; letter-spacing:.1em; text-transform:uppercase; }
+  .readout strong { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; font-variant-numeric:tabular-nums; font-weight:650; }
+  .coord { grid-column:1/-1; }
+  .coord strong { font-size:10px; color:#cbd6eb; }
+  .actions { display:flex; flex-wrap:wrap; gap:7px; margin-top:12px; }
+  button {
+    flex:1 1 auto; padding:8px 10px; border:1px solid #ffffff24; border-radius:9px;
+    background:#ffffff0d; color:#eaf0ff; font-size:11px; cursor:pointer;
+  }
+  button:hover { background:#ffffff19; border-color:#ffffff40; }
+  button.primary { background:#7779ff26; border-color:#888aff70; }
+  .sliderline { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .sliderline output { color:#dbe3f4; font-size:11px; font-variant-numeric:tabular-nums; }
+  input[type="range"] { width:100%; accent-color:#8b8cff; }
+  .progress { height:3px; border-radius:3px; background:#ffffff12; overflow:hidden; margin-top:12px; }
+  .progress > div { height:100%; width:0%; background:linear-gradient(90deg,#7779ff,#44d8ca); transition:width .1s linear; }
+  #state { margin-top:7px; min-height:14px; color:#95a5c0; font-size:10px; }
+  #help {
+    position:fixed; z-index:2; right:16px; bottom:14px; padding:9px 11px; border-radius:10px;
+    background:#080d18bd; border:1px solid #ffffff16; color:#aebbd0; font-size:10px; line-height:1.6;
+    text-align:right; pointer-events:none; backdrop-filter:blur(8px);
+    transition:opacity .18s ease;
+  }
+  body.ui-hidden .panel, body.ui-hidden #help { opacity:0; pointer-events:none; }
+  body.ui-hidden .panel { transform:translateX(-12px); }
+  #notice {
+    display:none; position:fixed; z-index:5; left:50%; bottom:20px; transform:translateX(-50%);
+    max-width:min(620px,calc(100vw - 32px)); padding:10px 14px; border-radius:10px;
+    background:#39222a; border:1px solid #e17b8a66; color:#ffe1e5; font-size:12px;
+  }
+  @media (max-width:600px) {
+    .panel { top:8px; left:8px; width:min(340px,calc(100vw - 16px)); padding:12px; max-height:72vh; }
+    #help { right:8px; bottom:8px; font-size:9px; }
+  }
 </style>
 </head>
 <body>
-<canvas id="glView" aria-label="Interactive fractal viewport"></canvas>
-<canvas id="triangleView" aria-label="Interactive Sierpinski triangle viewport"></canvas>
-<section id="hud">
-  <div class="topline"><h1>FRACTAL DIVE</h1><span class="live">LIVE RENDER</span></div>
-  <p>Choose a fractal and explore it. The visible view is recalculated as you move instead of storing an ever-growing world.</p>
-  <label for="fractalSelect">Fractal</label>
-  <select id="fractalSelect">
-    <option value="mandelbrot">Mandelbrot set · 2D</option>
-    <option value="menger">Menger sponge · 3D cube fractal</option>
-    <option value="sierpinski">Sierpiński triangle · 2D</option>
+<canvas id="view" aria-label="Interactive Mandelbrot set"></canvas>
+
+<section class="panel" id="panel">
+  <div class="brand"><div class="mark">∞</div><h1>MANDELBROT DEEP EXPLORER</h1></div>
+  <p class="sub">Explore up to 10⁵⁰×. GPU rendering handles normal zoom; deep views use 220-digit coordinates, perturbation rendering, and exact per-pixel fallback where needed.</p>
+
+  <label for="preset">Explore a location</label>
+  <select id="preset">
+    <option value="main">The whole set</option>
+    <option value="seahorse">Seahorse valley</option>
+    <option value="elephant">Elephant valley</option>
+    <option value="spiral">Spiral region</option>
+    <option value="mini">Mini Mandelbrot</option>
+    <option value="dendrite">Dendrite</option>
   </select>
-  <div class="stats">
-    <div class="stat"><small id="statOneLabel">Zoom</small><strong id="statOne">1.00×</strong></div>
-    <div class="stat"><small id="statTwoLabel">Iterations</small><strong id="statTwo">160</strong></div>
-    <div class="stat"><small>Render scale</small><strong id="renderScale">75%</strong></div>
-    <div class="stat"><small>Renderer</small><strong id="renderer">Starting…</strong></div>
+
+  <div class="grid">
+    <div class="readout"><small>Zoom depth</small><strong id="zoom">1×</strong></div>
+    <div class="readout"><small>Iterations</small><strong id="iterations">360</strong></div>
+    <div class="readout"><small>Coordinate storage</small><strong id="precision">220 decimal digits</strong></div>
+    <div class="readout"><small>Render size</small><strong id="resolution">—</strong></div>
+    <div class="readout coord"><small>Center (real, imaginary)</small><strong id="coordinates">−0.5000000000, 0.0000000000</strong></div>
   </div>
-  <div class="buttons">
-    <button id="reset">Reset view</button><button id="zoomOut">− Zoom</button><button id="zoomIn">+ Zoom</button><button id="quality">Quality: Auto</button>
+
+  <label for="detail"><span class="sliderline"><span>Iteration floor</span><output id="detailValue">360</output></span></label>
+  <input id="detail" type="range" min="120" max="5000" step="40" value="360">
+
+  <label for="palette">Colour palette</label>
+  <select id="palette">
+    <option value="aurora">Aurora</option>
+    <option value="electric">Electric</option>
+    <option value="ember">Ember</option>
+    <option value="mono">Monochrome</option>
+  </select>
+
+  <div class="actions">
+    <button class="primary" id="reset">Reset view</button>
+    <button id="zoomIn">Zoom in</button>
+    <button id="zoomOut">Zoom out</button>
+    <button id="save">Save PNG</button>
   </div>
-  <div class="help" id="controlsHelp">Scroll to zoom towards cursor · Drag to pan · Double-click to zoom in</div>
-  <div id="notice"></div>
+  <div class="progress"><div id="progressBar"></div></div>
+  <div id="state" role="status">Ready. Scroll to zoom.</div>
 </section>
-<div id="hint">Scroll to zoom · Drag to pan · Double-click to zoom in</div>
-<div id="fatal"></div>
+
+<div id="help">Wheel: fast zoom at cursor · Drag: pan · Double-click: zoom in<br>U: hide/show interface · Arrow keys: pan · +/-: zoom</div>
+<div id="notice"></div>
+
 <script>
 (() => {
   'use strict';
+
+  const canvas = document.getElementById('view');
+  const ctx = canvas.getContext('2d', { alpha:false });
   const $ = id => document.getElementById(id);
-  const glCanvas = $('glView'), triCanvas = $('triangleView');
-  const fatal = $('fatal'), notice = $('notice');
-  const select = $('fractalSelect');
-  const gl = glCanvas.getContext('webgl', {antialias:false, alpha:false, depth:false, stencil:false, powerPreference:'high-performance'});
 
-  const vertexSource = `
-    attribute vec2 position;
-    void main(){ gl_Position=vec4(position,0.0,1.0); }
-  `;
-  const mandelbrotSource = `
-    precision highp float;
-    uniform vec2 resolution;
-    uniform vec2 center;
-    uniform float zoom;
-    uniform int maxIter;
-    vec3 palette(float t){
-      return 0.52+0.48*cos(6.28318*(vec3(0.02,0.32,0.62)+t*vec3(1.0,0.82,0.68)));
-    }
-    void main(){
-      vec2 uv=(gl_FragCoord.xy-0.5*resolution)/resolution.y;
-      vec2 c=center+uv*(2.7/zoom);
-      vec2 z=vec2(0.0);
-      float iter=0.0, m2=0.0;
-      for(int i=0;i<700;i++){
-        if(i>=maxIter || m2>256.0) break;
-        z=vec2(z.x*z.x-z.y*z.y,2.0*z.x*z.y)+c;
-        m2=dot(z,z); iter+=1.0;
-      }
-      vec3 color;
-      if(m2<=256.0) color=vec3(0.008,0.012,0.028);
-      else{
-        float smoothIter=iter+1.0-log2(max(1.0,log2(max(1.0001,m2))));
-        color=palette((smoothIter/float(maxIter))*2.6);
-        color*=0.82+0.18*cos(uv.y*3.0);
-      }
-      gl_FragColor=vec4(color,1.0);
-    }
-  `;
-  const mengerSource = `
-    precision highp float;
-    uniform vec2 resolution;
-    uniform vec3 cameraPos,cameraForward,cameraRight,cameraUp;
-    float sdBox(vec3 p,vec3 b){
-      vec3 q=abs(p)-b;
-      return length(max(q,vec3(0.0)))+min(max(q.x,max(q.y,q.z)),0.0);
-    }
-    float mengerDE(vec3 p){
-      float d=sdBox(p,vec3(1.0));
-      float s=1.0;
-      for(int i=0;i<4;i++){
-        vec3 a=mod(p*s,2.0)-1.0;
-        s*=3.0;
-        vec3 r=abs(1.0-3.0*abs(a));
-        float cut=(min(max(r.x,r.y),min(max(r.y,r.z),max(r.z,r.x)))-1.0)/s;
-        d=max(d,cut);
-      }
-      return d;
-    }
-    vec3 getNormal(vec3 p){
-      float e=0.002;
-      return normalize(vec3(
-        mengerDE(p+vec3(e,0.0,0.0))-mengerDE(p-vec3(e,0.0,0.0)),
-        mengerDE(p+vec3(0.0,e,0.0))-mengerDE(p-vec3(0.0,e,0.0)),
-        mengerDE(p+vec3(0.0,0.0,e))-mengerDE(p-vec3(0.0,0.0,e))));
-    }
-    void main(){
-      vec2 uv=(gl_FragCoord.xy-0.5*resolution)/resolution.y;
-      vec3 rd=normalize(cameraForward+uv.x*cameraRight*1.25+uv.y*cameraUp*1.25);
-      float travel=0.0,dist=0.0; bool hit=false; vec3 p=cameraPos;
-      for(int i=0;i<112;i++){
-        p=cameraPos+rd*travel;
-        dist=mengerDE(p);
-        if(dist<0.0018){hit=true;break;}
-        travel+=clamp(dist*0.78,0.0015,0.5);
-        if(travel>18.0)break;
-      }
-      vec3 color=vec3(0.012,0.018,0.035);
-      if(hit){
-        vec3 n=getNormal(p), lightDir=normalize(vec3(-0.55,0.85,-0.45));
-        float diffuse=max(dot(n,lightDir),0.0);
-        float rim=pow(1.0-max(dot(n,-rd),0.0),3.0);
-        float bands=0.5+0.5*cos(5.5*p.y+3.5*p.x);
-        vec3 base=mix(vec3(0.10,0.34,0.62),vec3(0.18,0.76,0.72),bands*0.45+0.25);
-        color=base*(0.25+0.75*diffuse)+vec3(0.22,0.48,0.85)*rim*0.5;
-        color*=1.0-0.15*min(travel/12.0,1.0);
-      }
-      float vignette=1.0-0.2*smoothstep(0.35,1.15,length(uv));
-      gl_FragColor=vec4(color*vignette,1.0);
-    }
-  `;
+  // The fast path uses WebGL2 for the majority of exploration. Coordinates
+  // are represented as high+low float pairs (double-single arithmetic), so
+  // the GPU keeps substantially more precision than a normal float shader.
+  const gpuCanvas = document.createElement('canvas');
+  const gl = gpuCanvas.getContext('webgl2', {
+    alpha:false, antialias:false, depth:false, stencil:false,
+    preserveDrawingBuffer:true, powerPreference:'high-performance'
+  });
+  let gpuProgram = null;
+  let gpuUniforms = null;
+  let gpuReady = false;
 
-  let glReady=false, programs=null, buffer=null;
-  function compileShader(type,source){
-    const shader=gl.createShader(type); gl.shaderSource(shader,source); gl.compileShader(shader);
-    if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS)){
-      const message=gl.getShaderInfoLog(shader)||'Unknown shader compilation error'; gl.deleteShader(shader); throw new Error(message);
+  function initGpu() {
+    if (!gl) return false;
+    const vertexSource = `#version 300 es
+      in vec2 position;
+      void main(){ gl_Position=vec4(position,0.0,1.0); }
+    `;
+    const fragmentSource = `#version 300 es
+      precision highp float;
+      precision highp int;
+      uniform vec2 uResolution;
+      uniform vec2 uCenterX;
+      uniform vec2 uCenterY;
+      uniform float uSpan;
+      uniform int uMaxIter;
+      uniform int uPalette;
+      out vec4 outColor;
+
+      // Double-single arithmetic: each number is stored as a high float
+      // plus a low correction float. This is useful for zooming past the
+      // precision limit of a plain 32-bit fragment shader.
+      vec2 dsAdd(vec2 a, vec2 b) {
+        float s = a.x + b.x;
+        float v = s - a.x;
+        float e = (a.x - (s - v)) + (b.x - v) + a.y + b.y;
+        float hi = s + e;
+        float lo = e - (hi - s);
+        return vec2(hi, lo);
+      }
+      vec2 dsNeg(vec2 a) { return vec2(-a.x, -a.y); }
+      vec2 dsSub(vec2 a, vec2 b) { return dsAdd(a, dsNeg(b)); }
+      vec2 dsMul(vec2 a, vec2 b) {
+        float p = a.x * b.x;
+        float ca = 4097.0 * a.x;
+        float cb = 4097.0 * b.x;
+        float ahi = ca - (ca - a.x);
+        float bhi = cb - (cb - b.x);
+        float alo = a.x - ahi;
+        float blo = b.x - bhi;
+        float e = (((ahi*bhi - p) + ahi*blo) + alo*bhi) + alo*blo;
+        e += a.x*b.y + a.y*b.x + a.y*b.y;
+        float hi = p + e;
+        return vec2(hi, e - (hi - p));
+      }
+
+      bool dsLE(vec2 a, vec2 b) {
+        vec2 d = dsSub(a,b);
+        return d.x < 0.0 || (d.x == 0.0 && d.y <= 0.0);
+      }
+
+      vec3 colour(float smoothIter) {
+        if (uPalette == 3) {
+          float v = 0.10 + 0.86 * pow(clamp(smoothIter / float(uMaxIter), 0.0, 1.0), 0.55);
+          return vec3(v);
+        }
+        float t = fract(smoothIter / 42.0);
+        if (uPalette == 1) {
+          return vec3(0.06 + 0.40*(0.5+0.5*sin(smoothIter*0.05)),
+                      0.08 + 0.78*pow(t,0.72),
+                      0.22 + 0.70*pow(1.0-t,0.65));
+        }
+        if (uPalette == 2) {
+          return vec3(0.10 + 0.90*pow(t,0.62),
+                      0.02 + 0.48*pow(t,1.65),
+                      0.025 + 0.14*pow(t,3.0));
+        }
+        float a = 6.2831853 * (t*2.5);
+        return 0.12 + 0.84 * (0.5 + 0.5*cos(a + vec3(0.0,2.1,4.2)));
+      }
+
+      void main() {
+        vec2 uv = (gl_FragCoord.xy - 0.5*uResolution) / uResolution.y;
+        float xoff = uv.x * uSpan;
+        float yoff = uv.y * uSpan;
+        vec2 cr = dsAdd(uCenterX, vec2(xoff,0.0));
+        vec2 ci = dsAdd(uCenterY, vec2(yoff,0.0));
+        // Double-single interior tests avoid misclassifying tiny details
+        // near the cardioid and period-2 bulb boundaries.
+        vec2 xm = dsSub(cr,vec2(0.25,0.0));
+        vec2 y2 = dsMul(ci,ci);
+        vec2 q = dsAdd(dsMul(xm,xm),y2);
+        bool insideCardioid = dsLE(dsMul(q,dsAdd(q,xm)),dsMul(vec2(0.25,0.0),y2));
+        vec2 xp = dsAdd(cr,vec2(1.0,0.0));
+        bool insideBulb = dsLE(dsAdd(dsMul(xp,xp),y2),vec2(0.0625,0.0));
+        if (insideCardioid || insideBulb) {
+          outColor = vec4(0.012,0.018,0.035,1.0);
+          return;
+        }
+
+        vec2 zr = vec2(0.0);
+        vec2 zi = vec2(0.0);
+        float mag2 = 0.0;
+        int escapedAt = uMaxIter;
+        bool escaped = false;
+
+        for (int i=0; i<1600; i++) {
+          if (i >= uMaxIter) break;
+          vec2 zr2 = dsMul(zr,zr);
+          vec2 zi2 = dsMul(zi,zi);
+          vec2 nextR = dsAdd(dsSub(zr2,zi2),cr);
+          vec2 nextI = dsAdd(dsMul(dsAdd(zr,zr),zi),ci);
+          zr = nextR;
+          zi = nextI;
+          mag2 = zr.x*zr.x + zi.x*zi.x;
+          if (mag2 > 256.0) {
+            escaped = true;
+            escapedAt = i+1;
+            break;
+          }
+        }
+
+        if (!escaped) {
+          outColor = vec4(0.012,0.018,0.035,1.0);
+        } else {
+          float smoothIter = float(escapedAt) + 1.0 -
+            log2(max(1.000001,log2(max(1.000001,mag2))));
+          outColor = vec4(colour(smoothIter),1.0);
+        }
+      }
+    `;
+
+    function compile(type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        const message = gl.getShaderInfoLog(shader) || 'Unknown shader compilation error';
+        gl.deleteShader(shader);
+        throw new Error(message);
+      }
+      return shader;
     }
-    return shader;
+
+    try {
+      const program = gl.createProgram();
+      gl.attachShader(program, compile(gl.VERTEX_SHADER, vertexSource));
+      gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragmentSource));
+      gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        throw new Error(gl.getProgramInfoLog(program) || 'Shader link failed');
+      }
+      gpuProgram = program;
+      gl.useProgram(program);
+      const vertices = new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]);
+      const buffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+      const position = gl.getAttribLocation(program, 'position');
+      gl.enableVertexAttribArray(position);
+      gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+      gpuUniforms = {
+        resolution:gl.getUniformLocation(program,'uResolution'),
+        centerX:gl.getUniformLocation(program,'uCenterX'),
+        centerY:gl.getUniformLocation(program,'uCenterY'),
+        span:gl.getUniformLocation(program,'uSpan'),
+        maxIter:gl.getUniformLocation(program,'uMaxIter'),
+        palette:gl.getUniformLocation(program,'uPalette')
+      };
+      gpuReady = true;
+      return true;
+    } catch (error) {
+      console.warn('GPU renderer unavailable; using high-precision CPU renderer:', error);
+      gpuReady = false;
+      return false;
+    }
   }
-  function createProgram(fragment){
-    const p=gl.createProgram();
-    const vs=compileShader(gl.VERTEX_SHADER,vertexSource), fs=compileShader(gl.FRAGMENT_SHADER,fragment);
-    gl.attachShader(p,vs);gl.attachShader(p,fs);gl.linkProgram(p);
-    gl.deleteShader(vs);gl.deleteShader(fs);
-    if(!gl.getProgramParameter(p,gl.LINK_STATUS)){
-      const message=gl.getProgramInfoLog(p)||'Unknown shader link error';gl.deleteProgram(p);throw new Error(message);
-    }
-    return p;
-  }
-  if(gl){
-    try{
-      programs={mandel:createProgram(mandelbrotSource),menger:createProgram(mengerSource)};
-      buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
-      gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);
-      glReady=true;
-    }catch(err){
-      notice.style.display='block';notice.textContent='WebGL could not initialise: '+err.message+' The Sierpiński triangle will still work.';
-    }
-  }else{
-    notice.style.display='block';notice.textContent='WebGL is unavailable in this browser. The Sierpiński triangle still works; enable hardware acceleration for the other views.';
+  initGpu();
+
+  const PRECISION = 220;
+  const SCALE = 10n ** BigInt(PRECISION);
+  const MAX_DEPTH = 50;
+  const MIN_DEPTH = -1.0;
+  const MAX_ITER_CAP = 5000;
+  const GPU_ITER_CAP = 1600;
+
+  // Decimal-string <-> fixed-point BigInt conversion. This keeps the view centre
+  // precise even when its meaningful digits are far beyond Number's 15-16 digits.
+  function decimalToFixed(input) {
+    let s = String(input).trim().toLowerCase();
+    if (!s || s === '-') return 0n;
+    let sign = 1n;
+    if (s[0] === '-') { sign = -1n; s = s.slice(1); }
+    else if (s[0] === '+') s = s.slice(1);
+    const parts = s.split('e');
+    const exponent = parts.length > 1 ? Number(parts[1]) : 0;
+    const base = parts[0];
+    const dot = base.indexOf('.');
+    const fractional = dot < 0 ? 0 : base.length - dot - 1;
+    const digits = base.replace('.', '').replace(/^0+(?=\d)/, '') || '0';
+    const power = PRECISION + exponent - fractional;
+    if (power >= 0) return sign * BigInt(digits) * (10n ** BigInt(power));
+    const divisor = 10n ** BigInt(-power);
+    return sign * (BigInt(digits) / divisor);
   }
 
-  let mode='mandelbrot', cx=-0.5, cy=0, zoom=1, triX=0, triY=0, triZoom=1;
-  let yaw=-0.704,pitch=-0.36,camera=[2.8,1.9,3.3];
-  let renderScale=0.75,quality='auto',dirty=true,dragging=false,lastX=0,lastY=0;
-  let lastTime=performance.now(),fps=50,frameCount=0;
-  const keys=new Set();
-  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-  const statOneLabel=$('statOneLabel'),statOne=$('statOne'),statTwoLabel=$('statTwoLabel'),statTwo=$('statTwo');
+  function fixedToText(v, digits=18) {
+    const neg = v < 0n;
+    let a = neg ? -v : v;
+    const whole = a / SCALE;
+    let frac = (a % SCALE).toString().padStart(PRECISION, '0').slice(0, digits);
+    frac = frac.replace(/0+$/, '');
+    return (neg ? '-' : '') + whole.toString() + (frac ? '.' + frac : '');
+  }
 
-  function iterations(){return Math.min(680,Math.max(120,Math.floor(150+Math.log2(zoom+1)*38)));}
-  function basis(){
-    const cp=Math.cos(pitch),sp=Math.sin(pitch),sy=Math.sin(yaw),cyaw=Math.cos(yaw);
-    return {forward:[sy*cp,sp,-cyaw*cp],right:[cyaw,0,sy],up:[sy*sp,cp,-cyaw*sp]};
+  function fixedToDouble(v) { return Number(v) / Number(SCALE); }
+
+  function splitFixed(v) {
+    const hi = fixedToDouble(v);
+    const hiFixed = decimalToFixed(hi.toPrecision(17));
+    const lo = fixedToDouble(v - hiFixed);
+    return [hi, lo];
   }
-  function setCanvasSize(){
-    const dpr=Math.min(window.devicePixelRatio||1,1.75),ratio=dpr*renderScale;
-    const w=Math.max(1,Math.floor(innerWidth*ratio)),h=Math.max(1,Math.floor(innerHeight*ratio));
-    for(const canvas of [glCanvas,triCanvas]){if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}}
-    if(glReady)gl.viewport(0,0,glCanvas.width,glCanvas.height);
-    dirty=true;
+
+  // A pixel offset is generated as a Number for fast perturbation. If the
+  // reference orbit escapes early, convert that offset back into the same
+  // 220-digit fixed-point domain and iterate that pixel exactly.
+  function numberToFixed(v) {
+    if (v === 0) return 0n;
+    return decimalToFixed(v.toExponential(17));
   }
-  function bindProgram(program){
-    gl.useProgram(program);gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
-    const loc=gl.getAttribLocation(program,'position');gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+
+  function iteratePixelFixed(dx, dy, maxIter) {
+    const cr = centerX + numberToFixed(dx);
+    const ci = centerY + numberToFixed(dy);
+    let zr = 0n, zi = 0n;
+    const escapeLimit = 4n * SCALE * SCALE;
+    for (let i = 0; i < maxIter; i++) {
+      const nextR = (zr * zr - zi * zi) / SCALE + cr;
+      const nextI = (2n * zr * zi) / SCALE + ci;
+      zr = nextR;
+      zi = nextI;
+      const magnitude = zr * zr + zi * zi;
+      if (magnitude > escapeLimit) {
+        const ar = Number(zr) / Number(SCALE);
+        const ai = Number(zi) / Number(SCALE);
+        return { escaped:true, escapeIter:i + 1, mag2:ar * ar + ai * ai };
+      }
+    }
+    return { escaped:false, escapeIter:maxIter, mag2:0 };
   }
-  function drawMandel(){
-    const p=programs.mandel;bindProgram(p);
-    gl.uniform2f(gl.getUniformLocation(p,'resolution'),glCanvas.width,glCanvas.height);
-    gl.uniform2f(gl.getUniformLocation(p,'center'),cx,cy);
-    gl.uniform1f(gl.getUniformLocation(p,'zoom'),zoom);
-    gl.uniform1i(gl.getUniformLocation(p,'maxIter'),iterations());
+
+  function complexReference(cr, ci, maxIter) {
+    let zr = 0n, zi = 0n;
+    // Store Z_0 as well as Z_1...Z_n. Perturbation step k uses Z_k,
+    // then tests the resulting pixel orbit against Z_(k+1).
+    const rr = new Float64Array(maxIter + 1);
+    const ri = new Float64Array(maxIter + 1);
+    const rrLo = new Float64Array(maxIter + 1);
+    const riLo = new Float64Array(maxIter + 1);
+    let count = 0;
+    const escapeLimit = 4n * SCALE * SCALE;
+
+    rr[0] = 0; ri[0] = 0; rrLo[0] = 0; riLo[0] = 0;
+    for (let i = 0; i < maxIter; i++) {
+      const zr2 = (zr * zr - zi * zi) / SCALE + cr;
+      const zi2 = (2n * zr * zi) / SCALE + ci;
+      zr = zr2; zi = zi2;
+      const [rh, rl] = splitFixed(zr);
+      const [ih, il] = splitFixed(zi);
+      rr[i + 1] = rh; rrLo[i + 1] = rl;
+      ri[i + 1] = ih; riLo[i + 1] = il;
+      count = i + 1;
+      if (zr * zr + zi * zi > escapeLimit) break;
+    }
+    return { rr, ri, rrLo, riLo, count };
+  }
+
+  const presets = {
+    main:     { x:'-0.5', y:'0', depth:0 },
+    seahorse: { x:'-0.743643887037151', y:'0.13182590420533', depth:7.4 },
+    elephant: { x:'0.275', y:'0.008', depth:3.3 },
+    spiral:   { x:'-0.1592', y:'1.0317', depth:3.1 },
+    mini:     { x:'-1.25066', y:'0.02012', depth:4.3 },
+    dendrite: { x:'0', y:'0', depth:1.0 }
+  };
+
+  let centerX = decimalToFixed('-0.5');
+  let centerY = decimalToFixed('0');
+  let depth = 0;
+  let maxIter = 360;
+  let palette = 'aurora';
+  let renderToken = 0;
+  let renderTimer = 0;
+  let dragging = false;
+  let lastPointer = null;
+
+  // Keep the last finished image moving under the cursor immediately.
+  // A fresh fractal render replaces this stretched preview when ready.
+  let previewScale = 1;
+  let previewX = 0;
+  let previewY = 0;
+  function applyPreviewTransform() {
+    canvas.style.transformOrigin = '0 0';
+    canvas.style.transform = `matrix(${previewScale},0,0,${previewScale},${previewX},${previewY})`;
+  }
+  function resetPreviewTransform() {
+    previewScale = 1;
+    previewX = 0;
+    previewY = 0;
+    canvas.style.transform = '';
+    canvas.style.transformOrigin = '';
+  }
+  function previewZoom(factor, x, y) {
+    previewScale *= factor;
+    previewX = factor * previewX + (1 - factor) * x;
+    previewY = factor * previewY + (1 - factor) * y;
+    applyPreviewTransform();
+  }
+  function previewPan(dx, dy) {
+    previewX += dx;
+    previewY += dy;
+    applyPreviewTransform();
+  }
+  let imageCanvas = document.createElement('canvas');
+  let imageCtx = imageCanvas.getContext('2d', { alpha:false });
+  let latestImage = null;
+  let deepWorkers = [];
+  let deepWorkerUrl = null;
+
+  function stopDeepWorkers() {
+    for (const worker of deepWorkers) {
+      try { worker.terminate(); } catch (_) {}
+    }
+    deepWorkers = [];
+    if (deepWorkerUrl) {
+      try { URL.revokeObjectURL(deepWorkerUrl); } catch (_) {}
+      deepWorkerUrl = null;
+    }
+  }
+
+  const state = $('state');
+  const progressBar = $('progressBar');
+
+  function depthScale() { return 2.8 * Math.pow(10, -depth); }
+  function currentIterations() {
+    // Deep boundary points need more iterations as the visible feature size
+    // shrinks. Keep the GPU path inside the shader's fixed loop cap, then
+    // raise the CPU perturbation budget with zoom depth.
+    if (depth > 11) {
+      return Math.min(MAX_ITER_CAP, Math.max(maxIter, Math.floor(500 + depth * 90)));
+    }
+    return Math.min(GPU_ITER_CAP, Math.max(maxIter, Math.floor(260 + depth * 5.2)));
+  }
+
+  function resizeCanvas() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    canvas.width = Math.max(1, Math.floor(innerWidth * dpr));
+    canvas.height = Math.max(1, Math.floor(innerHeight * dpr));
+    canvas.style.width = innerWidth + 'px';
+    canvas.style.height = innerHeight + 'px';
+    scheduleRender();
+  }
+
+  function setState(message) { state.textContent = message; }
+
+  function updateReadouts(w=0,h=0,it=currentIterations()) {
+    $('zoom').textContent = depth < 4 ? Math.pow(10, depth).toFixed(2) + '×' : '10^' + depth.toFixed(1) + '×';
+    $('iterations').textContent = it.toLocaleString();
+    $('precision').textContent = gpuReady && depth <= 11 ? 'GPU ~14 digits' : PRECISION + '-digit centre';
+    $('resolution').textContent = w ? w + ' × ' + h : 'Preparing…';
+    $('coordinates').textContent = fixedToText(centerX, 16) + ', ' + fixedToText(centerY, 16);
+  }
+
+  function scheduleRender() {
+    const token = ++renderToken;
+    clearTimeout(renderTimer);
+    stopDeepWorkers();
+    const useGpu = gpuReady && depth <= 11;
+    const width = useGpu
+      ? Math.max(720, Math.min(1600, canvas.width))
+      : Math.max(220, Math.min(280, Math.floor(canvas.width * 0.34)));
+    const height = Math.max(190, Math.floor(width * canvas.height / Math.max(1,canvas.width)));
+    updateReadouts(width,height);
+    setState('Preparing high-precision reference orbit…');
+    progressBar.style.width = '0%';
+    // Coalesce rapid wheel events, then yield once before expensive work.
+    renderTimer = setTimeout(() => {
+      requestAnimationFrame(() => {
+        if (token !== renderToken) return;
+        render(token, width, height);
+      });
+    }, 55);
+  }
+
+  function paletteColor(t, n) {
+    if (!Number.isFinite(t)) t = 0;
+    if (palette === 'mono') {
+      t = Math.max(0, Math.min(1, t));
+      const v = Math.floor(24 + 220 * Math.pow(t, .55));
+      return [v,v,v];
+    }
+    // Cycle the colour bands by escape count instead of compressing all
+    // low-iteration pixels into almost the same colour.
+    t = ((t % 1) + 1) % 1;
+    let r=0,g=0,b=0;
+    if (palette === 'ember') {
+      r = 26 + 229*Math.pow(t,.55); g = 5 + 112*Math.pow(t,1.8); b = 12 + 34*Math.pow(t,3);
+    } else if (palette === 'electric') {
+      r = 16 + 102*(.5+.5*Math.sin(n*.045));
+      g = 24 + 205*Math.pow(t,.7); b = 55 + 200*Math.pow(1-t,.6);
+    } else {
+      const phase = t * 6.28318 * 2.5;
+      r = 35 + 190*(.5+.5*Math.cos(phase));
+      g = 32 + 190*(.5+.5*Math.cos(phase+2.1));
+      b = 42 + 205*(.5+.5*Math.cos(phase+4.2));
+    }
+    return [Math.max(0,Math.min(255,r)),Math.max(0,Math.min(255,g)),Math.max(0,Math.min(255,b))];
+  }
+
+  function renderGpu(token, w, h, iters) {
+    if (token !== renderToken) return;
+    gpuCanvas.width = w;
+    gpuCanvas.height = h;
+    gl.viewport(0,0,w,h);
+    gl.useProgram(gpuProgram);
+
+    const [cxHi,cxLo] = splitFixed(centerX);
+    const [cyHi,cyLo] = splitFixed(centerY);
+    gl.uniform2f(gpuUniforms.resolution,w,h);
+    gl.uniform2f(gpuUniforms.centerX,cxHi,cxLo);
+    gl.uniform2f(gpuUniforms.centerY,cyHi,cyLo);
+    gl.uniform1f(gpuUniforms.span,depthScale());
+    gl.uniform1i(gpuUniforms.maxIter,Math.min(GPU_ITER_CAP,iters));
+    gl.uniform1i(gpuUniforms.palette,{aurora:0,electric:1,ember:2,mono:3}[palette] ?? 0);
     gl.drawArrays(gl.TRIANGLES,0,6);
-    statOneLabel.textContent='Zoom';statOne.textContent=zoom.toExponential(2)+'×';
-    statTwoLabel.textContent='Iterations';statTwo.textContent=iterations();$('renderer').textContent='WebGL · 2D';
+    gl.finish();
+
+    if (token !== renderToken) return;
+    ctx.fillStyle = '#05070d';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(gpuCanvas,0,0,canvas.width,canvas.height);
+    resetPreviewTransform();
+    latestImage = gpuCanvas;
+    progressBar.style.width = '100%';
+    updateReadouts(w,h,iters);
+    setState('GPU accelerated · rendered in one pass');
   }
-  function drawMenger(){
-    const p=programs.menger;bindProgram(p);const b=basis();
-    gl.uniform2f(gl.getUniformLocation(p,'resolution'),glCanvas.width,glCanvas.height);
-    gl.uniform3f(gl.getUniformLocation(p,'cameraPos'),camera[0],camera[1],camera[2]);
-    gl.uniform3f(gl.getUniformLocation(p,'cameraForward'),...b.forward);
-    gl.uniform3f(gl.getUniformLocation(p,'cameraRight'),...b.right);
-    gl.uniform3f(gl.getUniformLocation(p,'cameraUp'),...b.up);
-    gl.drawArrays(gl.TRIANGLES,0,6);
-    statOneLabel.textContent='Camera position';statOne.textContent=camera.map(v=>v.toFixed(1)).join(', ');
-    statTwoLabel.textContent='Recursive cuts';statTwo.textContent='4 levels';$('renderer').textContent='WebGL · 3D';
-  }
-  function trianglePath(ctx,a,b,c){ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.lineTo(c[0],c[1]);ctx.closePath();}
-  function drawSierpinski(ctx,a,b,c,depth,bounds){
-    const minX=Math.min(a[0],b[0],c[0]),maxX=Math.max(a[0],b[0],c[0]);
-    const minY=Math.min(a[1],b[1],c[1]),maxY=Math.max(a[1],b[1],c[1]);
-    if(maxX<bounds.left||minX>bounds.right||maxY<bounds.top||minY>bounds.bottom)return;
-    if(depth<=0){trianglePath(ctx,a,b,c);ctx.fill();return;}
-    const ab=[(a[0]+b[0])/2,(a[1]+b[1])/2],bc=[(b[0]+c[0])/2,(b[1]+c[1])/2],ca=[(c[0]+a[0])/2,(c[1]+a[1])/2];
-    drawSierpinski(ctx,a,ab,ca,depth-1,bounds);
-    drawSierpinski(ctx,ab,b,bc,depth-1,bounds);
-    drawSierpinski(ctx,ca,bc,c,depth-1,bounds);
-  }
-  function drawTriangle(){
-    const ctx=triCanvas.getContext('2d');if(!ctx)return;
-    const dpr=Math.min(window.devicePixelRatio||1,1.75)*renderScale;
-    ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#05060c';ctx.fillRect(0,0,innerWidth,innerHeight);
-    const scale=Math.min(innerWidth,innerHeight)*1.28*triZoom;
-    ctx.save();ctx.translate(innerWidth/2-triX*scale,innerHeight/2-triY*scale);ctx.scale(scale,scale);
-    const top=[0,-0.52],left=[-0.5,0.38],right=[0.5,0.38];
-    ctx.fillStyle='#0d1628';trianglePath(ctx,top,left,right);ctx.fill();
-    const depth=clamp(7+Math.floor(Math.log2(triZoom)),7,20);
-    const bounds={left:triX-innerWidth/(2*scale),right:triX+innerWidth/(2*scale),top:triY-innerHeight/(2*scale),bottom:triY+innerHeight/(2*scale)};
-    ctx.fillStyle='#80d8d0';drawSierpinski(ctx,top,left,right,depth,bounds);ctx.restore();
-    statOneLabel.textContent='Zoom';statOne.textContent=triZoom.toExponential(2)+'×';
-    statTwoLabel.textContent='Triangle depth';statTwo.textContent=depth;$('renderer').textContent='Canvas · 2D';
-  }
-  function updateHelp(){
-    if(mode==='menger'){
-      $('controlsHelp').innerHTML='<span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> move · Mouse look · <span class="key">Space</span>/<span class="key">C</span> up/down · <span class="key">Shift</span> sprint · Esc releases mouse';
-      $('hint').textContent=document.pointerLockElement===glCanvas?'WASD move · Mouse look · Space/C rise and fall · Esc to release':'Click the 3D view to capture mouse · WASD to move';
-    }else{
-      $('controlsHelp').textContent='Scroll to zoom towards cursor · Drag to pan · Double-click to zoom in';
-      $('hint').textContent='Scroll to zoom · Drag to pan · Double-click to zoom in';
+
+
+  function renderDeepWithWorkers(token, w, h, iters, ref, xOffsets, yOffsets, centerPairX, centerPairY) {
+    if (typeof Worker === 'undefined' || typeof Blob === 'undefined' || typeof URL.createObjectURL !== 'function') {
+      return false;
     }
-  }
-  function switchMode(next){
-    mode=next;const tri=mode==='sierpinski';
-    triCanvas.style.display=tri?'block':'none';glCanvas.style.display=tri?'none':'block';
-    if(document.pointerLockElement&&document.exitPointerLock)document.exitPointerLock();
-    $('zoomIn').textContent=mode==='menger'?'+ Move':'+ Zoom';$('zoomOut').textContent=mode==='menger'?'− Move':'− Zoom';
-    if(!glReady&&!tri){notice.style.display='block';}else if(glReady){notice.style.display='none';}
-    updateHelp();dirty=true;if(tri)drawTriangle();
-  }
-  function reset(){
-    if(mode==='mandelbrot'){cx=-0.5;cy=0;zoom=1;}
-    else if(mode==='sierpinski'){triX=0;triY=0;triZoom=1;drawTriangle();}
-    else{camera=[2.8,1.9,3.3];yaw=-0.704;pitch=-0.36;}
-    dirty=true;
-  }
-  function zoom2D(factor,x=innerWidth/2,y=innerHeight/2){
-    if(mode==='mandelbrot'){
-      const old=2.7/zoom,nx=(x-innerWidth/2)/innerHeight,ny=(innerHeight/2-y)/innerHeight;
-      const bx=cx+nx*old,by=cy+ny*old;zoom=clamp(zoom*factor,0.25,1e8);
-      const span=2.7/zoom;cx=bx-nx*span;cy=by-ny*span;
-    }else if(mode==='sierpinski'){
-      const old=1/(Math.min(innerWidth,innerHeight)*1.28*triZoom);
-      const bx=triX+(x-innerWidth/2)*old,by=triY+(y-innerHeight/2)*old;
-      triZoom=clamp(triZoom*factor,0.2,1e6);
-      const span=1/(Math.min(innerWidth,innerHeight)*1.28*triZoom);
-      triX=bx-(x-innerWidth/2)*span;triY=by-(y-innerHeight/2)*span;drawTriangle();
+
+    const workerSource = `
+      self.onmessage = function(event) {
+        const d = event.data;
+        const rr=d.rr, ri=d.ri, rrLo=d.rrLo, riLo=d.riLo;
+        const xs=d.xOffsets, ys=d.yOffsets;
+        const out = new Uint8ClampedArray(d.w * (d.rowEnd-d.rowStart) * 4);
+
+        function colour(t, n, palette) {
+          if (!Number.isFinite(t)) t=0;
+          if (palette === 'mono') {
+            t=Math.max(0,Math.min(1,t));
+            const v=Math.floor(24+220*Math.pow(t,.55));
+            return [v,v,v];
+          }
+          t=((t%1)+1)%1;
+          let r=0,g=0,b=0;
+          if (palette==='ember') {
+            r=26+229*Math.pow(t,.55); g=5+112*Math.pow(t,1.8); b=12+34*Math.pow(t,3);
+          } else if (palette==='electric') {
+            r=16+102*(.5+.5*Math.sin(n*.045));
+            g=24+205*Math.pow(t,.7); b=55+200*Math.pow(1-t,.6);
+          } else {
+            const phase=t*6.28318*2.5;
+            r=35+190*(.5+.5*Math.cos(phase));
+            g=32+190*(.5+.5*Math.cos(phase+2.1));
+            b=42+205*(.5+.5*Math.cos(phase+4.2));
+          }
+          return [Math.max(0,Math.min(255,r)),Math.max(0,Math.min(255,g)),Math.max(0,Math.min(255,b))];
+        }
+
+        const fixedScale = 10n ** BigInt(d.precisionDigits);
+        const fixedEscapeLimit = 4n * fixedScale * fixedScale;
+
+        function decimalToFixedInWorker(value) {
+          if (value === 0) return 0n;
+          const s = Number(value).toExponential(17).toLowerCase();
+          let sign = 1n;
+          let body = s;
+          if (body[0] === '-') { sign = -1n; body = body.slice(1); }
+          const parts = body.split('e');
+          const exponent = parts.length > 1 ? Number(parts[1]) : 0;
+          const base = parts[0];
+          const dot = base.indexOf('.');
+          const fractional = dot < 0 ? 0 : base.length - dot - 1;
+          const digits = base.replace('.', '').replace(/^0+(?=\\d)/, '') || '0';
+          const power = d.precisionDigits + exponent - fractional;
+          if (power >= 0) return sign * BigInt(digits) * (10n ** BigInt(power));
+          return sign * (BigInt(digits) / (10n ** BigInt(-power)));
+        }
+
+        function exactPixel(dx,dy) {
+          const cr = BigInt(d.centerXFixed) + decimalToFixedInWorker(dx);
+          const ci = BigInt(d.centerYFixed) + decimalToFixedInWorker(dy);
+          let zr = 0n, zi = 0n;
+          for (let i=0; i<d.iters; i++) {
+            const nextR = (zr*zr - zi*zi)/fixedScale + cr;
+            const nextI = (2n*zr*zi)/fixedScale + ci;
+            zr = nextR; zi = nextI;
+            const magnitude = zr*zr + zi*zi;
+            if (magnitude > fixedEscapeLimit) {
+              const ar = Number(zr)/Number(fixedScale);
+              const ai = Number(zi)/Number(fixedScale);
+              return {escaped:true, escapeIter:i+1, mag2:ar*ar+ai*ai};
+            }
+          }
+          return {escaped:false, escapeIter:d.iters, mag2:0};
+        }
+
+        let outRow=0;
+        for (let y=d.rowStart; y<d.rowEnd; y++,outRow++) {
+          const dcI=ys[y];
+          for (let x=0; x<d.w; x++) {
+            const dcR=xs[x];
+            let escaped=false,escapeIter=d.iters,mag2=0;
+            let dr=0,di=0;
+            // The reference orbit is valid through refCount, even when it
+            // escapes before the requested iteration budget. Most nearby
+            // pixels escape during this perturbation pass.
+            for (let k=0;k<d.refCount;k++) {
+              const zr=rr[k], zi=ri[k], zrl=rrLo[k], zil=riLo[k];
+              const nr=2*(zr*dr-zi*di+zrl*dr-zil*di)+dr*dr-di*di+dcR;
+              const ni=2*(zr*di+zi*dr+zrl*di+zil*dr)+2*dr*di+dcI;
+              dr=nr; di=ni;
+              const ar=rr[k+1]+dr, ai=ri[k+1]+di;
+              mag2=ar*ar+ai*ai;
+              if (mag2>4) { escaped=true; escapeIter=k+1; break; }
+            }
+            // Only pixels not classified by the truncated reference orbit
+            // need an exact per-pixel BigInt continuation.
+            if (!escaped && d.refCount<d.iters) {
+              const exact=exactPixel(dcR,dcI);
+              escaped=exact.escaped;
+              escapeIter=exact.escapeIter;
+              mag2=exact.mag2;
+            }
+            const p=(outRow*d.w+x)*4;
+            if (!escaped) {
+              out[p]=3; out[p+1]=5; out[p+2]=13; out[p+3]=255;
+            } else {
+              const smooth=escapeIter+1-Math.log2(Math.max(1.000001,Math.log2(Math.max(1.000001,mag2))));
+              const c=colour(smooth/42,smooth,d.palette);
+              out[p]=c[0]; out[p+1]=c[1]; out[p+2]=c[2]; out[p+3]=255;
+            }
+          }
+          if ((outRow+1)%12===0 || y===d.rowEnd-1) {
+            self.postMessage({kind:'progress',token:d.token,doneRows:outRow+1,totalRows:d.rowEnd-d.rowStart});
+          }
+        }
+        self.postMessage({
+          kind:'done', token:d.token, rowStart:d.rowStart,
+          rowCount:d.rowEnd-d.rowStart, pixels:out
+        }, [out.buffer]);
+      };
+    `;
+
+    let workerUrl = null;
+    const workers = [];
+    const workerCount = Math.min(4, Math.max(1, (navigator.hardwareConcurrency || 4) - 1));
+    const rowsPerWorker = Math.ceil(h / workerCount);
+    let finishedWorkers = 0;
+    let finishedRows = 0;
+    const rowsByWorker = new Map();
+
+    try {
+      workerUrl = URL.createObjectURL(new Blob([workerSource], { type:'text/javascript' }));
+      deepWorkerUrl = workerUrl;
+      for (let i=0; i<workerCount; i++) workers.push(new Worker(workerUrl));
+    } catch (error) {
+      for (const worker of workers) try { worker.terminate(); } catch (_) {}
+      if (workerUrl) URL.revokeObjectURL(workerUrl);
+      deepWorkerUrl = null;
+      return false;
     }
-    dirty=true;
-  }
-  for(const canvas of [glCanvas,triCanvas]){
-    canvas.addEventListener('wheel',e=>{if(mode==='menger')return;e.preventDefault();zoom2D(Math.exp(-e.deltaY*0.0011),e.clientX,e.clientY);},{passive:false});
-    canvas.addEventListener('pointerdown',e=>{
-      if(mode==='menger'){
-        if(canvas===glCanvas&&document.pointerLockElement!==glCanvas&&glCanvas.requestPointerLock)glCanvas.requestPointerLock();
+
+    deepWorkers = workers;
+    imageCanvas.width = w;
+    imageCanvas.height = h;
+
+    workers.forEach((worker, i) => {
+      const rowStart=i*rowsPerWorker;
+      const rowEnd=Math.min(h,rowStart+rowsPerWorker);
+      if (rowStart>=rowEnd) {
+        worker.terminate();
+        finishedWorkers++;
         return;
       }
-      dragging=true;lastX=e.clientX;lastY=e.clientY;canvas.setPointerCapture(e.pointerId);
+      rowsByWorker.set(i,0);
+      worker.onmessage = event => {
+        const msg=event.data;
+        if (token!==renderToken) { worker.terminate(); return; }
+        if (msg.kind==='progress') {
+          rowsByWorker.set(i,msg.doneRows);
+          const sum=[...rowsByWorker.values()].reduce((a,b)=>a+b,0);
+          const total=Math.min(h,rowsPerWorker*workerCount);
+          const pct=Math.min(99,100*sum/total);
+          progressBar.style.width=pct.toFixed(1)+'%';
+          setState('Parallel deep render… '+Math.round(pct)+'%');
+        } else if (msg.kind==='done') {
+          const pixels=new Uint8ClampedArray(msg.pixels);
+          const slice=imageCtx.createImageData(w,msg.rowCount);
+          slice.data.set(pixels);
+          imageCtx.putImageData(slice,0,msg.rowStart);
+          finishedRows+=msg.rowCount;
+          finishedWorkers++;
+          worker.terminate();
+          if (finishedWorkers>=workerCount) {
+            // Composite once all worker slices are complete to avoid seams
+            // where independently finished strips meet.
+            ctx.fillStyle='#05070d';
+            ctx.fillRect(0,0,canvas.width,canvas.height);
+            ctx.imageSmoothingEnabled=true;
+            ctx.imageSmoothingQuality='high';
+            ctx.drawImage(imageCanvas,0,0,w,h,0,0,canvas.width,canvas.height);
+            latestImage=imageCanvas;
+            progressBar.style.width='100%';
+            resetPreviewTransform();
+            setState('Rendered with parallel deep-zoom workers.');
+            stopDeepWorkers();
+          }
+        }
+      };
+      worker.onerror = error => {
+        if (token!==renderToken) return;
+        for (const wkr of workers) try { wkr.terminate(); } catch (_) {}
+        deepWorkers=[];
+        URL.revokeObjectURL(workerUrl);
+        deepWorkerUrl = null;
+        setState('Worker rendering unavailable; using the single-thread fallback.');
+        renderDeepSingleThread(token,w,h,iters,ref,xOffsets,yOffsets,centerPairX,centerPairY);
+      };
+      worker.postMessage({
+        token,w,h,iters,rowStart,rowEnd,
+        refCount:ref.count,palette,
+        rr:ref.rr,ri:ref.ri,rrLo:ref.rrLo,riLo:ref.riLo,
+        centerXFixed:centerX.toString(), centerYFixed:centerY.toString(),
+        precisionDigits:PRECISION, xOffsets,yOffsets
+      });
     });
-    canvas.addEventListener('pointermove',e=>{
-      if(mode==='menger'||!dragging)return;
-      const dx=e.clientX-lastX,dy=e.clientY-lastY,span=mode==='mandelbrot'?2.7/zoom:1/(Math.min(innerWidth,innerHeight)*1.28*triZoom);
-      if(mode==='mandelbrot'){cx-=dx/innerHeight*span;cy+=dy/innerHeight*span;}
-      else{triX-=dx*span;triY-=dy*span;drawTriangle();}
-      lastX=e.clientX;lastY=e.clientY;dirty=true;
-    });
-    canvas.addEventListener('pointerup',()=>dragging=false);canvas.addEventListener('pointercancel',()=>dragging=false);
-    canvas.addEventListener('dblclick',e=>{if(mode!=='menger')zoom2D(3,e.clientX,e.clientY);});
+    return true;
   }
-  document.addEventListener('pointerlockchange',updateHelp);
-  document.addEventListener('mousemove',e=>{if(mode==='menger'&&document.pointerLockElement===glCanvas){yaw+=e.movementX*0.0022;pitch=clamp(pitch-e.movementY*0.0022,-1.52,1.52);dirty=true;}});
-  document.addEventListener('keydown',e=>{
-    if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName))return;
-    const k=e.key.toLowerCase();if(['w','a','s','d',' ','c','e','q','shift'].includes(k))e.preventDefault();keys.add(k);
-  });
-  document.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));window.addEventListener('blur',()=>keys.clear());
 
-  function moveCamera(dt){
-    if(mode!=='menger'||!glReady)return;
-    const b=basis(),speed=keys.has('shift')?7.0:2.5;
-    let f=(keys.has('w')?1:0)-(keys.has('s')?1:0),r=(keys.has('d')?1:0)-(keys.has('a')?1:0);
-    let v=(keys.has(' ')||keys.has('e')?1:0)-(keys.has('c')||keys.has('q')?1:0);
-    const length=Math.hypot(f,r,v)||1;f/=length;r/=length;v/=length;
-    if(f||r||v){camera[0]+=(b.forward[0]*f+b.right[0]*r)*speed*dt;camera[1]+=(b.forward[1]*f+v)*speed*dt;camera[2]+=(b.forward[2]*f+b.right[2]*r)*speed*dt;dirty=true;}
-  }
-  function render(now){
-    const dt=Math.min(0.06,Math.max(0,(now-lastTime)/1000));lastTime=now;
-    if(dt>0)fps=fps*0.9+(1/dt)*0.1;
-    moveCamera(dt);frameCount++;
-    if(quality==='auto'&&frameCount%90===0&&mode==='menger'){
-      const next=fps<24?Math.max(0.4,renderScale-0.1):fps>48?Math.min(0.85,renderScale+0.05):renderScale;
-      if(Math.abs(next-renderScale)>0.01){renderScale=next;setCanvasSize();}
+  function render(token, w, h) {
+    const iters = currentIterations();
+    if (gpuReady && depth <= 11) {
+      renderGpu(token, w, h, iters);
+      return;
     }
-    if(dirty){
-      if(mode==='sierpinski')drawTriangle();
-      else if(glReady){if(mode==='mandelbrot')drawMandel();else drawMenger();}
-      dirty=false;
-      $('renderScale').textContent=Math.round(renderScale*100)+'%';
-    }
-    requestAnimationFrame(render);
+    const ref = complexReference(centerX, centerY, iters);
+    if (token !== renderToken) return;
+    imageCanvas.width = w; imageCanvas.height = h;
+    const span = depthScale();
+    const pixel = span / h;
+    const xOffsets = new Float64Array(w);
+    for (let x=0; x<w; x++) xOffsets[x] = (x + 0.5 - w/2) * pixel;
+    const yOffsets = new Float64Array(h);
+    for (let y=0; y<h; y++) yOffsets[y] = (h/2 - y - 0.5) * pixel;
+
+    const centerPairX=splitFixed(centerX);
+    const centerPairY=splitFixed(centerY);
+    if (renderDeepWithWorkers(token,w,h,iters,ref,xOffsets,yOffsets,centerPairX,centerPairY)) return;
+    renderDeepSingleThread(token,w,h,iters,ref,xOffsets,yOffsets,centerPairX,centerPairY);
   }
-  select.addEventListener('change',()=>switchMode(select.value));
-  $('reset').addEventListener('click',reset);
-  $('zoomIn').addEventListener('click',()=>{if(mode==='menger'){const f=basis().forward;camera=camera.map((v,i)=>v+f[i]*0.5);dirty=true;}else zoom2D(2);});
-  $('zoomOut').addEventListener('click',()=>{if(mode==='menger'){const f=basis().forward;camera=camera.map((v,i)=>v-f[i]*0.5);dirty=true;}else zoom2D(0.5);});
-  $('quality').addEventListener('click',e=>{
-    quality=quality==='auto'?'full':'auto';renderScale=quality==='full'?1:0.75;
-    e.currentTarget.textContent='Quality: '+(quality==='auto'?'Auto':'Full');setCanvasSize();
+
+  function renderDeepSingleThread(token,w,h,iters,ref,xOffsets,yOffsets,centerPairX,centerPairY) {
+    imageCanvas.width=w;
+    imageCanvas.height=h;
+    const img=imageCtx.createImageData(w,h);
+    const data=img.data;
+    let row = 0;
+    setState(ref.count < iters ? 'Deep render · direct precision fallback…' : 'Deep render · perturbation pass…');
+    function renderRows() {
+      if (token !== renderToken) return;
+      const firstRow = row;
+      const stop = Math.min(h, row + 8);
+      for (; row < stop; row++) {
+        const dcI = yOffsets[row];
+        for (let x=0; x<w; x++) {
+          const dcR = xOffsets[x];
+          let escaped=false, escapeIter=iters, mag2=0;
+          let dr=0,di=0;
+          for (let k=0;k<ref.count;k++) {
+            const zr=ref.rr[k], zi=ref.ri[k], zrl=ref.rrLo[k], zil=ref.riLo[k];
+            const nr=2*(zr*dr-zi*di+zrl*dr-zil*di)+dr*dr-di*di+dcR;
+            const ni=2*(zr*di+zi*dr+zrl*di+zil*dr)+2*dr*di+dcI;
+            dr=nr; di=ni;
+            const ar=ref.rr[k+1]+dr, ai=ref.ri[k+1]+di;
+            mag2=ar*ar+ai*ai;
+            if (mag2>4) { escaped=true; escapeIter=k+1; break; }
+          }
+          if (!escaped && ref.count<iters) {
+            const exact=iteratePixelFixed(dcR,dcI,iters);
+            escaped=exact.escaped;
+            escapeIter=exact.escapeIter;
+            mag2=exact.mag2;
+          }
+          const p = (row*w+x)*4;
+          if (!escaped) {
+            data[p]=3; data[p+1]=5; data[p+2]=13; data[p+3]=255;
+          } else {
+            const smooth = escapeIter + 1 - Math.log2(Math.max(1.000001, Math.log2(Math.max(1.000001,mag2))));
+            const [r,g,b] = paletteColor(smooth / 42, smooth);
+            data[p]=r; data[p+1]=g; data[p+2]=b; data[p+3]=255;
+          }
+        }
+      }
+      imageCtx.putImageData(img,0,0,0,firstRow,w,row-firstRow);
+      // Paint completed strips immediately, so the image progressively appears.
+      const top = firstRow / h * canvas.height;
+      const stripHeight = (row-firstRow) / h * canvas.height;
+      ctx.drawImage(imageCanvas, 0, firstRow, w, row-firstRow,
+                    0, top, canvas.width, stripHeight);
+      progressBar.style.width = (100*row/h).toFixed(1)+'%';
+      if (row < h) {
+        setState('Rendering… ' + Math.round(100*row/h) + '%');
+        requestAnimationFrame(renderRows);
+      } else {
+        latestImage = imageCanvas;
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.fillStyle = '#05070d'; ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.drawImage(imageCanvas,0,0,canvas.width,canvas.height);
+        resetPreviewTransform();
+        setState('Rendered. Keep exploring; the view regenerates as you move.');
+      }
+    }
+    renderRows();
+  }
+
+  function addToCenter(dx,dy) {
+    centerX += decimalToFixed(dx);
+    centerY += decimalToFixed(dy);
+  }
+
+  function zoomAt(factor, clientX=innerWidth/2, clientY=innerHeight/2) {
+    factor = Math.max(0.01, Math.min(100, factor));
+    previewZoom(factor, clientX, clientY);
+    const oldSpan = depthScale();
+    const nx = (clientX - innerWidth/2) / Math.max(1,innerHeight);
+    const ny = (innerHeight/2 - clientY) / Math.max(1,innerHeight);
+    const oldOffsetX = nx * oldSpan;
+    const oldOffsetY = ny * oldSpan;
+    const nextDepth = Math.max(MIN_DEPTH, Math.min(MAX_DEPTH, depth + Math.log10(factor)));
+    depth = nextDepth;
+    const newSpan = depthScale();
+    addToCenter(oldOffsetX - nx*newSpan, oldOffsetY - ny*newSpan);
+    scheduleRender();
+  }
+
+  function panPixels(dx,dy) {
+    previewPan(dx,dy);
+    const unit = depthScale() / Math.max(1,innerHeight);
+    addToCenter(-dx*unit, dy*unit);
+    scheduleRender();
+  }
+
+  function applyPreset(name) {
+    const p = presets[name] || presets.main;
+    centerX = decimalToFixed(p.x); centerY = decimalToFixed(p.y); depth=p.depth;
+    $('preset').value=name;
+    scheduleRender();
+  }
+
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const factor = Math.exp(Math.max(-2.4, Math.min(2.4, -e.deltaY * 0.0038)));
+    zoomAt(factor,e.clientX,e.clientY);
+  }, { passive:false });
+
+  canvas.addEventListener('pointerdown', e => {
+    dragging=true; lastPointer={x:e.clientX,y:e.clientY};
+    canvas.setPointerCapture(e.pointerId);
   });
-  window.addEventListener('resize',()=>{setCanvasSize();if(mode==='sierpinski')drawTriangle();});
-  setCanvasSize();updateHelp();
-  if(!glReady&&mode!=='sierpinski')$('renderer').textContent='WebGL unavailable';
-  else $('renderer').textContent=glReady?'WebGL · 2D':'Canvas · 2D';
-  requestAnimationFrame(render);
+  canvas.addEventListener('pointermove', e => {
+    if (!dragging || !lastPointer) return;
+    const dx=e.clientX-lastPointer.x, dy=e.clientY-lastPointer.y;
+    lastPointer={x:e.clientX,y:e.clientY};
+    panPixels(dx,dy);
+  });
+  function endDrag(){ dragging=false; lastPointer=null; }
+  canvas.addEventListener('pointerup',endDrag);
+  canvas.addEventListener('pointercancel',endDrag);
+  canvas.addEventListener('dblclick',e=>zoomAt(4,e.clientX,e.clientY));
+
+  $('preset').addEventListener('change',e=>applyPreset(e.target.value));
+  $('detail').addEventListener('input',e=>{
+    maxIter=Number(e.target.value); $('detailValue').textContent=maxIter; scheduleRender();
+  });
+  $('palette').addEventListener('change',e=>{palette=e.target.value;scheduleRender();});
+  $('reset').addEventListener('click',()=>applyPreset('main'));
+  $('zoomIn').addEventListener('click',()=>zoomAt(2));
+  $('zoomOut').addEventListener('click',()=>zoomAt(.5));
+  $('save').addEventListener('click',()=>{
+    if (!latestImage) { setState('Wait for the current render to finish before saving.'); return; }
+    const out=document.createElement('canvas');
+    out.width=latestImage.width; out.height=latestImage.height;
+    out.getContext('2d').drawImage(latestImage,0,0);
+    const a=document.createElement('a');
+    a.download='mandelbrot-explorer.png'; a.href=out.toDataURL('image/png'); a.click();
+  });
+
+  window.addEventListener('keydown',e=>{
+    if (e.key.toLowerCase()==='u' && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      document.body.classList.toggle('ui-hidden'); return;
+    }
+    if (['+','=','-','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
+    if (e.key==='+' || e.key==='=') zoomAt(2);
+    else if (e.key==='-') zoomAt(.5);
+    else if (e.key==='ArrowLeft') panPixels(-45,0);
+    else if (e.key==='ArrowRight') panPixels(45,0);
+    else if (e.key==='ArrowUp') panPixels(0,-45);
+    else if (e.key==='ArrowDown') panPixels(0,45);
+  }, {passive:false});
+
+  window.addEventListener('resize',resizeCanvas);
+  resizeCanvas();
 })();
 </script>
 </body>

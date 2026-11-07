@@ -122,7 +122,8 @@
             folderId: folderId == null ? null : String(folderId),
             rows: 20,
             cols: 10,
-            cells: {}
+            cells: {},
+            cellScripts: {}
         };
         sprawlers.push(item);
         if (item.folderId != null) expandedFolders.add(item.folderId);
@@ -299,6 +300,256 @@
 
     function cellKey(row, col) {
         return `${columnName(col)}${row + 1}`;
+    // Sprawlscript v1 parser
+function parseSprawlscript(source) {
+    const result = {
+        solidBackground: null,
+        color: null,
+        top: null,
+        bottom: null,
+        angle: 180,
+        background: ""
+    };
+
+    const allowed = new Set([
+        "background",
+        "color",
+        "gradient-top",
+        "gradient-bottom",
+        "gradient-angle"
+    ]);
+
+    const lines = String(source || "").split(/\r?\n/);
+
+    for (let index = 0; index < lines.length; index++) {
+        const line = lines[index].trim();
+
+        if (!line || line.startsWith("//")) continue;
+
+        const match = line.match(/^([a-z-]+)\s*=\s*(.*?)\s*$/i);
+
+        if (!match) {
+            return { error: `Line ${index + 1}: expected property = value.` };
+        }
+
+        const property = match[1].toLowerCase();
+        const value = match[2];
+
+        if (!allowed.has(property)) {
+            return { error: `Line ${index + 1}: unknown property "${property}".` };
+        }
+
+        if (property === "gradient-angle") {
+            const angle = Number(value);
+
+            if (!Number.isFinite(angle) || angle < 0 || angle > 360) {
+                return {
+                    error: `Line ${index + 1}: gradient-angle must be between 0 and 360.`
+                };
+            }
+
+            result.angle = angle;
+            continue;
+        }
+
+        const colorMatch = value.match(
+            /^hex:\s*(#[0-9a-f]{3}|#[0-9a-f]{6}|#[0-9a-f]{8})$/i
+        );
+
+        if (!colorMatch) {
+            return {
+                error: `Line ${index + 1}: use hex: #RGB, #RRGGBB or #RRGGBBAA.`
+            };
+        }
+
+        if (property === "background") result.solidBackground = colorMatch[1];
+        else if (property === "color") result.color = colorMatch[1];
+        else if (property === "gradient-top") result.top = colorMatch[1];
+        else if (property === "gradient-bottom") result.bottom = colorMatch[1];
+    }
+
+    if ((result.top && !result.bottom) || (!result.top && result.bottom)) {
+        return { error: "A gradient needs both gradient-top and gradient-bottom." };
+    }
+
+    if (result.solidBackground && (result.top || result.bottom)) {
+        return { error: "Use background OR gradient-top/gradient-bottom, not both." };
+    }
+
+    result.background = result.top && result.bottom
+        ? `linear-gradient(${result.angle}deg, ${result.top}, ${result.bottom})`
+        : (result.solidBackground || "");
+
+    return result;
+}
+
+function getCellScript(item, key) {
+    if (!item.cellScripts || typeof item.cellScripts !== "object") {
+        item.cellScripts = {};
+    }
+
+    return String(item.cellScripts[key] || "");
+}
+
+let scriptEditor = null;
+
+function closeSprawlscriptEditor() {
+    if (scriptEditor) scriptEditor.remove();
+    scriptEditor = null;
+}
+
+function openSprawlscriptEditor() {
+    const item = getSprawler(activeSprawlerId);
+    const targetCell = selectedCell;
+
+    if (!item || !targetCell || scriptEditor) return;
+
+    const overlay = document.createElement("div");
+    overlay.className = "sprawlscript-overlay";
+
+    const panel = document.createElement("section");
+    panel.className = "sprawlscript-panel";
+    panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-modal", "true");
+
+    const heading = document.createElement("div");
+    heading.className = "sprawlscript-heading";
+
+    const headingText = document.createElement("div");
+
+    const title = document.createElement("h2");
+    title.textContent = "Sprawlscript editor";
+
+    const subtitle = document.createElement("span");
+    subtitle.textContent = `Cell ${targetCell}`;
+
+    headingText.append(title, subtitle);
+
+    const shortcut = document.createElement("kbd");
+    shortcut.textContent = "Alt + C";
+
+    heading.append(headingText, shortcut);
+
+    const help = document.createElement("p");
+    help.className = "sprawlscript-help";
+    help.textContent =
+        "Set this cell's appearance. Each line assigns one property. Comments start with //.";
+
+    const examples = document.createElement("pre");
+    examples.className = "sprawlscript-examples";
+    examples.textContent =
+`// Solid fill and text color
+background = hex: #FF00FF
+color = hex: #FFFFFF
+
+// Or use a gradient instead
+gradient-top = hex: #FF00FF
+gradient-bottom = hex: #0000FF
+gradient-angle = 180`;
+
+    const textarea = document.createElement("textarea");
+    textarea.className = "sprawlscript-code";
+    textarea.spellcheck = false;
+    textarea.value = getCellScript(item, targetCell);
+    textarea.placeholder = "background = hex: #FF00FF";
+
+    const status = document.createElement("div");
+    status.className = "sprawlscript-status";
+    status.setAttribute("aria-live", "polite");
+
+    const actions = document.createElement("div");
+    actions.className = "sprawlscript-actions";
+
+    const clear = document.createElement("button");
+    clear.type = "button";
+    clear.className = "sprawlscript-reset";
+    clear.textContent = "Clear script";
+
+    const spacer = document.createElement("span");
+    spacer.className = "sprawlscript-action-spacer";
+
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.textContent = "Cancel";
+
+    const apply = document.createElement("button");
+    apply.type = "button";
+    apply.className = "sprawlscript-save";
+    apply.textContent = "Apply";
+
+    actions.append(clear, spacer, cancel, apply);
+    panel.append(heading, help, examples, textarea, status, actions);
+    overlay.appendChild(panel);
+
+    document.body.appendChild(overlay);
+    scriptEditor = overlay;
+
+    function validate() {
+        const parsed = parseSprawlscript(textarea.value);
+
+        if (parsed.error) {
+            status.textContent = parsed.error;
+            status.className = "sprawlscript-status is-error";
+            apply.disabled = true;
+            return false;
+        }
+
+        status.textContent = parsed.background
+            ? (parsed.top ? "Valid gradient." : "Valid solid background.")
+            : (parsed.color ? "Valid text color." : "Valid script. No visual properties set.");
+
+        status.className = "sprawlscript-status is-valid";
+        apply.disabled = false;
+        return true;
+    }
+
+    textarea.addEventListener("input", validate);
+
+    clear.addEventListener("click", () => {
+        textarea.value = "";
+        validate();
+        textarea.focus();
+    });
+
+    cancel.addEventListener("click", closeSprawlscriptEditor);
+
+    overlay.addEventListener("mousedown", event => {
+        if (event.target === overlay) closeSprawlscriptEditor();
+    });
+
+    textarea.addEventListener("keydown", event => {
+        if (event.key === "Escape") {
+            event.preventDefault();
+            closeSprawlscriptEditor();
+        } else if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+            event.preventDefault();
+            apply.click();
+        }
+    });
+
+    apply.addEventListener("click", () => {
+        if (!validate()) return;
+
+        const code = textarea.value.trim();
+
+        if (code) item.cellScripts[targetCell] = code;
+        else delete item.cellScripts[targetCell];
+
+        saveSprawlers();
+
+        closeSprawlscriptEditor();
+        renderSprawler();
+
+        const cell = sprawlerView.querySelector(
+            `[data-cell="${CSS.escape(targetCell)}"]`
+        );
+
+        if (cell) cell.focus();
+    });
+
+    validate();
+    textarea.focus();
+}
     }
 
     function readCell(item, key, stack = new Set()) {
@@ -430,7 +681,256 @@
             renderSidebar();
         });
 
-        top.append(title, addRow, addCol, deleteSprawler);
+        // Sprawlscript v1 parser
+        function parseSprawlscript(source) {
+            const result = {
+                solidBackground: null,
+                color: null,
+                top: null,
+                bottom: null,
+                angle: 180,
+                background: ""
+            };
+
+            const allowed = new Set([
+                "background",
+                "color",
+                "gradient-top",
+                "gradient-bottom",
+                "gradient-angle"
+            ]);
+
+            const lines = String(source || "").split(/\r?\n/);
+
+            for (let index = 0; index < lines.length; index++) {
+                const line = lines[index].trim();
+
+                if (!line || line.startsWith("//")) continue;
+
+                const match = line.match(/^([a-z-]+)\s*=\s*(.*?)\s*$/i);
+
+                if (!match) {
+                    return { error: `Line ${index + 1}: expected property = value.` };
+                }
+
+                const property = match[1].toLowerCase();
+                const value = match[2];
+
+                if (!allowed.has(property)) {
+                    return { error: `Line ${index + 1}: unknown property "${property}".` };
+                }
+
+                if (property === "gradient-angle") {
+                    const angle = Number(value);
+
+                    if (!Number.isFinite(angle) || angle < 0 || angle > 360) {
+                        return {
+                            error: `Line ${index + 1}: gradient-angle must be between 0 and 360.`
+                        };
+                    }
+
+                    result.angle = angle;
+                    continue;
+                }
+
+                const colorMatch = value.match(
+                    /^hex:\s*(#[0-9a-f]{3}|#[0-9a-f]{6}|#[0-9a-f]{8})$/i
+                );
+
+                if (!colorMatch) {
+                    return {
+                        error: `Line ${index + 1}: use hex: #RGB, #RRGGBB or #RRGGBBAA.`
+                    };
+                }
+
+                if (property === "background") result.solidBackground = colorMatch[1];
+                else if (property === "color") result.color = colorMatch[1];
+                else if (property === "gradient-top") result.top = colorMatch[1];
+                else if (property === "gradient-bottom") result.bottom = colorMatch[1];
+            }
+
+            if ((result.top && !result.bottom) || (!result.top && result.bottom)) {
+                return { error: "A gradient needs both gradient-top and gradient-bottom." };
+            }
+
+            if (result.solidBackground && (result.top || result.bottom)) {
+                return { error: "Use background OR gradient-top/gradient-bottom, not both." };
+            }
+
+            result.background = result.top && result.bottom
+                ? `linear-gradient(${result.angle}deg, ${result.top}, ${result.bottom})`
+                : (result.solidBackground || "");
+
+            return result;
+        }
+
+        function getCellScript(item, key) {
+            if (!item.cellScripts || typeof item.cellScripts !== "object") {
+                item.cellScripts = {};
+            }
+
+            return String(item.cellScripts[key] || "");
+        }
+
+        let scriptEditor = null;
+
+        function closeSprawlscriptEditor() {
+            if (scriptEditor) scriptEditor.remove();
+            scriptEditor = null;
+        }
+
+        function openSprawlscriptEditor() {
+            const item = getSprawler(activeSprawlerId);
+            const targetCell = selectedCell;
+
+            if (!item || !targetCell || scriptEditor) return;
+
+            const overlay = document.createElement("div");
+            overlay.className = "sprawlscript-overlay";
+
+            const panel = document.createElement("section");
+            panel.className = "sprawlscript-panel";
+            panel.setAttribute("role", "dialog");
+            panel.setAttribute("aria-modal", "true");
+
+            const heading = document.createElement("div");
+            heading.className = "sprawlscript-heading";
+
+            const headingText = document.createElement("div");
+
+            const title = document.createElement("h2");
+            title.textContent = "Sprawlscript editor";
+
+            const subtitle = document.createElement("span");
+            subtitle.textContent = `Cell ${targetCell}`;
+
+            headingText.append(title, subtitle);
+
+            const shortcut = document.createElement("kbd");
+            shortcut.textContent = "Alt + C";
+
+            heading.append(headingText, shortcut);
+
+            const help = document.createElement("p");
+            help.className = "sprawlscript-help";
+            help.textContent =
+                "Set this cell's appearance. Each line assigns one property. Comments start with //.";
+
+            const examples = document.createElement("pre");
+            examples.className = "sprawlscript-examples";
+            examples.textContent =
+        `// Solid fill and text color
+        background = hex: #FF00FF
+        color = hex: #FFFFFF
+
+        // Or use a gradient instead
+        gradient-top = hex: #FF00FF
+        gradient-bottom = hex: #0000FF
+        gradient-angle = 180`;
+
+            const textarea = document.createElement("textarea");
+            textarea.className = "sprawlscript-code";
+            textarea.spellcheck = false;
+            textarea.value = getCellScript(item, targetCell);
+            textarea.placeholder = "background = hex: #FF00FF";
+
+            const status = document.createElement("div");
+            status.className = "sprawlscript-status";
+            status.setAttribute("aria-live", "polite");
+
+            const actions = document.createElement("div");
+            actions.className = "sprawlscript-actions";
+
+            const clear = document.createElement("button");
+            clear.type = "button";
+            clear.className = "sprawlscript-reset";
+            clear.textContent = "Clear script";
+
+            const spacer = document.createElement("span");
+            spacer.className = "sprawlscript-action-spacer";
+
+            const cancel = document.createElement("button");
+            cancel.type = "button";
+            cancel.textContent = "Cancel";
+
+            const apply = document.createElement("button");
+            apply.type = "button";
+            apply.className = "sprawlscript-save";
+            apply.textContent = "Apply";
+
+            actions.append(clear, spacer, cancel, apply);
+            panel.append(heading, help, examples, textarea, status, actions);
+            overlay.appendChild(panel);
+
+            document.body.appendChild(overlay);
+            scriptEditor = overlay;
+
+            function validate() {
+                const parsed = parseSprawlscript(textarea.value);
+
+                if (parsed.error) {
+                    status.textContent = parsed.error;
+                    status.className = "sprawlscript-status is-error";
+                    apply.disabled = true;
+                    return false;
+                }
+
+                status.textContent = parsed.background
+                    ? (parsed.top ? "Valid gradient." : "Valid solid background.")
+                    : (parsed.color ? "Valid text color." : "Valid script. No visual properties set.");
+
+                status.className = "sprawlscript-status is-valid";
+                apply.disabled = false;
+                return true;
+            }
+
+            textarea.addEventListener("input", validate);
+
+            clear.addEventListener("click", () => {
+                textarea.value = "";
+                validate();
+                textarea.focus();
+            });
+
+            cancel.addEventListener("click", closeSprawlscriptEditor);
+
+            overlay.addEventListener("mousedown", event => {
+                if (event.target === overlay) closeSprawlscriptEditor();
+            });
+
+            textarea.addEventListener("keydown", event => {
+                if (event.key === "Escape") {
+                    event.preventDefault();
+                    closeSprawlscriptEditor();
+                } else if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+                    event.preventDefault();
+                    apply.click();
+                }
+            });
+
+            apply.addEventListener("click", () => {
+                if (!validate()) return;
+
+                const code = textarea.value.trim();
+
+                if (code) item.cellScripts[targetCell] = code;
+                else delete item.cellScripts[targetCell];
+
+                saveSprawlers();
+
+                closeSprawlscriptEditor();
+                renderSprawler();
+
+                const cell = sprawlerView.querySelector(
+                    `[data-cell="${CSS.escape(targetCell)}"]`
+                );
+
+                if (cell) cell.focus();
+            });
+
+            validate();
+            textarea.focus();
+        }
 
         const formulaBar = document.createElement("div");
         formulaBar.className = "sprawler-formula-bar";
