@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#00e900">
+  <meta name="description" content="Fill The Sea. A game where you explore a vast procedural world, gather resources, survive storms, and automate industrial production.">
+  <title>Fill The Sea — Industry Engine Prototype v1.8.6</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="app" aria-label="Fill The Sea gameplay prototype">
+    <div id="game-frame">
+      <canvas id="game" width="1000" height="700" aria-label="Fill The Sea expansive world with 25 stepped elevation layers with no ramps. Move with WASD and Space, use keys 1-9 for hotbar slots, and right click a machine with an ingredient to use it."></canvas>
+
+      <section class="world-hint" aria-label="Current activity">
+        <div id="mode-label">EXPLORATION</div>
+        <div id="instruction">Gather resources and build your way up.</div>
+      </section>
+
+      <button id="inventory-tab" class="inventory-tab" type="button" title="Open inventory (Tab)">INVENTORY <kbd>TAB</kbd></button>
+      <button id="regenerate" class="world-button" type="button" title="Generate a new random landscape">NEW WORLD ↻</button>
+      <button id="resource-highlight" class="highlight-button" type="button" title="Highlight visible resources (H)" aria-pressed="false">HIGHLIGHT RESOURCES · H</button>
+
+      <nav id="hotbar-bar" class="hotbar-bar" aria-label="Hotbar">
+        <!-- Nine hotbar slots are rendered by game.js. -->
+      </nav>
+
+      <section id="inventory-screen" class="inventory-screen" aria-label="36 slot inventory" aria-modal="true" role="dialog">
+        <div class="inventory-window">
+          <header class="inventory-header">
+            <div><strong>Inventory</strong><span>Tab to close</span></div>
+            <button id="inventory-close" type="button" class="close-button" aria-label="Close inventory">×</button>
+          </header>
+          <section class="inventory-hotbar-section">
+            <div class="section-label">Hotbar. Drag or click two slots to swap.</div>
+            <nav id="inventory-hotbar" class="hotbar-bar inventory-hotbar" aria-label="Edit hotbar"></nav>
+          </section>
+          <div class="inventory-layout">
+            <section class="inventory-section">
+              <div class="section-label">Backpack</div>
+              <div id="inventory-grid" class="inventory-grid"></div>
+              <p class="inventory-help">Good luck.</p>
+            </section>
+            <section class="craft-section">
+              <div class="section-label">Crafting</div>
+              <div id="crafting-recipes"></div>
+              <div class="recipe-note">Crafted devices become inventory items. Drag them into a hotbar slot to equip them. Water Pumps attach to channels.</div>
+            </section>
+          </div>
+          <footer class="inventory-footer"><span>A/D left/right, W/S up/down, SPACE jump, E shelter, H highlight</span><span>1–9 select hotbar slot</span></footer>
+        </div>
+      </section>
+
+      <section id="industry-inspector" class="industry-inspector" aria-label="Machine controls" hidden></section>
+
+      <section id="inspection" class="remote-panel" aria-label="Remote display" hidden>
+        <div class="inspection-header">
+          <div><div id="inspection-title" class="panel-heading">Remote Display</div><div class="remote-subtitle">Telemetry is linked.</div></div>
+          <button type="button" id="close-inspection" class="close-button" aria-label="Close remote display">×</button>
+        </div>
+        <div id="inspection-content"></div>
+      </section>
+
+      <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+      <div class="touch-controls" aria-label="Touch movement controls">
+        <div class="dpad">
+          <button data-key="w" aria-label="Move up-screen on the ground plane">▲</button>
+          <div class="dpad-row">
+            <button data-key="a" aria-label="Move left">◀</button>
+            <button data-key="s" aria-label="Move down-screen on the ground plane">▼</button>
+            <button data-key="d" aria-label="Move right">▶</button>
+          </div>
+        </div>
+        <div class="touch-actions">
+          <button id="touch-inventory" type="button">Bag</button>
+          <button id="interact" type="button">Use</button>
+          <button id="jump" class="jump-button" type="button">Jump</button>
+        </div>
+      </div>
+    </div>
+    <footer class="page-footer">
+      <span>Fill The Sea v1.8.6</span>
+      <span>by <a href="https://lucamulder.com" target="_blank" rel="noopener">PyPower</a></span>
+    </footer>
+  </main>
+  <script src="data/registry.js" defer></script>
+  <script src="systems/asset-loader.js" defer></script>
+  <script src="systems/industry-engine.js" defer></script>
+  <script src="systems/industry-ui.js" defer></script>
+  <script src="game.js" defer></script>
+</body>
+</html>

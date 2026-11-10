@@ -1,0 +1,35 @@
+[assets/effects/]
+  lightning.png
+  smoke.png
+  sparks.png
+  steam.png
+  water-flow.png
+[assets/items/]
+  blank-board.png
+  blasting-frame.png
+  cast-brass.png
+  cast-copper.png
+  cast-iron.png
+  cast-transformer.png
+  smokestack.png
+  transformer-core.png
+  transformer.png
+  tungsten-ingot.png
+  tungsten-shaft.png
+  wire.png
+  x2-multiplier.png
+  x4-multiplier.png
+[assets/machines/]
+  accumulator.png
+  blast-burner.png
+  board-assembly-device.png
+  brass-kiln.png
+  casting-machine.png
+  coiling-device.png
+  crusher.png
+  mains-supply.png
+  transistor-fabricator.png
+  water-pump.png
+  waterwheel.png
+[assets/resources/]
+  zinc-deposit.png

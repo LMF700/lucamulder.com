@@ -1,0 +1,227 @@
+:root { color-scheme: dark; font-family: Verdana, Geneva, sans-serif; background: #101710; color: #f5f5f5; }
+* { box-sizing: border-box; }
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+body { display: grid; place-items: center; background: #101710; }
+button { font: inherit; cursor: pointer; }
+#app { width: min(100vw, calc((100vh - 28px) * 1.428571)); display: grid; gap: 7px; }
+#game-frame { width: 100%; aspect-ratio: 10 / 7; position: relative; overflow: hidden; background: #00e900; box-shadow: 0 10px 45px #0009; }
+canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.world-hint { position: absolute; top: 13px; left: 14px; max-width: 250px; padding: 6px 9px; background: #050505d9; border: 3px solid #f5f5f5; box-shadow: 0 0 0 2px #050505; color: #fff; font-size: 10px; line-height: 1.4; pointer-events: none; }
+#mode-label { font-weight: bold; color: #f4ef00; margin-bottom: 3px; }
+#instruction { color: #e5e5e5; }
+.inventory-tab, .world-button { position: absolute; top: 13px; background: #050505e8; border: 3px solid #fff; box-shadow: 0 0 0 2px #050505; color: #fff; padding: 6px 9px; font-size: 10px; font-weight: bold; }
+.inventory-tab { right: 14px; }
+.inventory-tab kbd { color: #f5ef00; border: 1px solid #777; padding: 1px 3px; margin-left: 5px; font: inherit; }
+.world-button { top: 54px; right: 14px; border-width: 2px; font-size: 9px; }
+.highlight-button { position: absolute; top: 95px; right: 14px; z-index: 5; background: #050505e8; border: 2px solid #fff; box-shadow: 0 0 0 2px #050505; color: #fff; padding: 6px 9px; font-size: 9px; font-weight: bold; }
+.highlight-button.active { color: #f4ef00; border-color: #f4ef00; background: #14200aeF; }
+.hotbar-bar { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; gap: 4px; padding: 5px; background: #050505e9; border: 3px solid #fff; box-shadow: 0 0 0 2px #050505; z-index: 4; }
+.hotbar-slot { width: clamp(39px, 5vw, 51px); height: clamp(43px, 5.5vw, 58px); position: relative; display: grid; place-items: center; padding: 2px; background: #303030; color: #fff; border: 2px solid #888; }
+.hotbar-slot.selected { border: 3px solid #f4ef00; background: #57532a; box-shadow: inset 0 0 0 1px #111; }
+.hotbar-slot[data-empty="1"] { background: #111; opacity: .66; }
+.hotbar-key { position: absolute; top: 1px; left: 4px; color: #bbb; font-size: 8px; }
+.item-glyph { font-size: 23px; line-height: 1; font-weight: bold; }
+.item-count { position: absolute; right: 3px; bottom: 2px; font-size: 9px; color: #f4ef00; text-shadow: 1px 1px #000; }
+.inventory-screen { display: none; position: absolute; inset: 0; z-index: 20; align-items: center; justify-content: center; background: #0009; padding: 18px; }
+.inventory-screen.open { display: flex; }
+.inventory-window { width: min(820px, 96%); max-height: 94%; overflow: auto; padding: 14px; background: #080808f5; border: 4px solid #fff; box-shadow: 0 0 0 4px #050505; }
+.inventory-header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 9px; border-bottom: 2px solid #777; }
+.inventory-header div { display: flex; flex-direction: column; gap: 3px; }
+.inventory-header strong { font-size: 19px; letter-spacing: .05em; }
+.inventory-header span { color: #aaa; font-size: 9px; }
+.close-button { color: #ff3838; border: 0; background: transparent; font-size: 27px; line-height: 20px; padding: 2px 4px; }
+.inventory-layout { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(230px, .7fr); gap: 18px; padding: 13px 0; }
+.section-label { color: #f4ef00; font-size: 10px; font-weight: bold; letter-spacing: .1em; margin-bottom: 8px; }
+.inventory-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; }
+.inventory-slot { min-width: 0; aspect-ratio: 1.05; position: relative; display: grid; place-items: center; padding: 3px; overflow: hidden; background: #292929; border: 2px solid #777; color: #fff; }
+.inventory-slot[data-empty="1"] { background: #111; border-color: #393939; }
+.inventory-slot.chosen { border-color: #f4ef00; background: #4d4920; }
+.inventory-slot .item-glyph { font-size: clamp(17px, 2.5vw, 25px); }
+.slot-name { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: #ddd; font-size: 7px; }
+.inventory-slot .item-count { font-size: 9px; }
+.inventory-help, .recipe-note { color: #aaa; font-size: 9px; line-height: 1.5; }
+.craft-recipe { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 0; border-bottom: 1px solid #444; }
+.craft-recipe div { display: flex; flex-direction: column; gap: 4px; }
+.craft-recipe b { font-size: 11px; }
+.craft-recipe small { color: #aaa; font-size: 8px; }
+.craft-recipe button { color: #080808; background: #f4ef00; border: 2px solid #fff; padding: 5px 9px; font-size: 9px; font-weight: bold; }
+.craft-recipe button:disabled { opacity: .35; cursor: not-allowed; }
+.material-line { margin-top: 10px; color: #ddd; font-size: 9px; line-height: 1.7; }
+.inventory-footer { display: flex; justify-content: space-between; gap: 8px; padding-top: 8px; border-top: 1px solid #555; color: #aaa; font-size: 8px; }
+.remote-panel { position: absolute; right: 15px; bottom: 90px; width: min(300px, 43%); max-height: 54%; overflow-y: auto; z-index: 8; padding: 9px 11px; background: #050505ef; border: 4px solid #fff; box-shadow: 0 0 0 3px #050505; color: #fff; font-size: 10px; line-height: 1.45; }
+.inspection-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-bottom: 1px solid #777; padding-bottom: 5px; margin-bottom: 7px; }
+.panel-heading { font-weight: bold; font-size: 10px; letter-spacing: .05em; }
+.remote-subtitle { color: #888; font-size: 7px; letter-spacing: .12em; margin-top: 2px; }
+.inspect-name { font-size: 14px; font-weight: bold; margin: 4px 0; }
+.inspect-row { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; font-size: 9px; border-bottom: 1px solid #292929; }
+.inspect-row span:last-child { text-align: right; color: #ddd; }
+.inspect-status { margin: 7px 0 3px; padding: 4px 6px; border: 1px solid #777; font-weight: bold; font-size: 9px; }
+.status-safe { color: #f3ef00; }
+.status-warning { color: #ffad31; }
+.status-danger { color: #ff4848; }
+.sensor-progress { font-size: 39px; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.module-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 7px; }
+.module-button, .slot-button { background: #151515; color: #fff; border: 1px solid #aaa; padding: 5px; font-size: 8px; text-align: left; }
+.module-button:disabled { opacity: .4; cursor: not-allowed; }
+.slot-row { display: flex; align-items: center; justify-content: space-between; gap: 5px; padding: 4px 0; border-bottom: 1px solid #444; font-size: 9px; }
+.slot-button { text-align: center; padding: 3px 7px; }
+.toast { position: absolute; top: 43%; left: 50%; transform: translate(-50%, -50%); z-index: 30; background: #050505ed; color: #fff; border: 3px solid #fff; padding: 8px 12px; font-size: 11px; max-width: 80%; text-align: center; pointer-events: none; opacity: 0; transition: opacity .12s; }
+.toast.show { opacity: 1; }
+.touch-controls { display: none; position: absolute; inset: auto 14px 90px; align-items: end; justify-content: space-between; pointer-events: none; z-index: 3; }
+.touch-controls button { pointer-events: auto; color: #fff; background: #050505b9; border: 2px solid #fff; min-width: 43px; min-height: 39px; font-weight: bold; }
+.dpad { display: grid; justify-items: center; gap: 2px; }
+.dpad-row { display: flex; gap: 2px; }
+.touch-actions { display: flex; align-items: end; gap: 8px; }
+.jump-button { min-width: 65px !important; min-height: 58px !important; border-radius: 50%; }
+.page-footer { display: flex; justify-content: space-between; gap: 12px; padding: 0 4px; color: #8c9b8c; font-size: 9px; letter-spacing: .05em; }
+@media (pointer: coarse) { .touch-controls { display: flex; } #app { width: min(100vw, calc((100vh - 15px) * 1.428571)); } }
+@media (max-width: 650px) {
+  #app { width: min(100vw, calc((100vh - 10px) * 1.428571)); gap: 3px; }
+  .world-hint { left: 7px; top: 7px; max-width: 43%; padding: 4px 6px; font-size: 8px; }
+  .inventory-tab { right: 7px; top: 7px; padding: 4px 6px; font-size: 8px; }
+  .world-button { right: 7px; top: 39px; padding: 4px 6px; font-size: 7px; }
+  .highlight-button { right: 7px; top: 70px; padding: 4px 6px; font-size: 7px; }
+  .hotbar-bar { bottom: 6px; gap: 2px; padding: 3px; border-width: 2px; }
+  .hotbar-slot { width: clamp(28px, 8.6vw, 43px); height: clamp(35px, 10vw, 46px); }
+  .hotbar-key { font-size: 7px; }
+  .item-glyph { font-size: 17px; }
+  .item-count { font-size: 7px; }
+  .remote-panel { right: 7px; bottom: 65px; width: min(48%, 260px); max-height: 48%; padding: 6px 8px; border-width: 2px; }
+  .inventory-screen { padding: 5px; }
+  .inventory-window { width: 100%; padding: 7px; border-width: 2px; }
+  .inventory-layout { grid-template-columns: 1fr; gap: 10px; padding: 8px 0; }
+  .inventory-grid { gap: 3px; }
+  .inventory-slot { aspect-ratio: 1.15; }
+  .slot-name { font-size: 6px; }
+  .craft-recipe { padding: 5px 0; }
+  .inventory-help, .recipe-note { font-size: 7px; }
+  .touch-controls { inset: auto 7px 62px; }
+  .page-footer { font-size: 6px; }
+}
+
+/* Procedural exploration additions */
+#interact { min-width: 52px; min-height: 45px; }
+
+/* Contextual in-world machine controls. This panel is opened by inspecting a placed machine. */
+.industry-inspector { position: absolute; right: 14px; bottom: 88px; width: min(350px, 46%); max-height: 68%; overflow: auto; z-index: 12; padding: 10px 12px; color: #fff; background: #050505f2; border: 4px solid #fff; box-shadow: 0 0 0 3px #050505; font-size: 9px; line-height: 1.45; }
+.industry-inspector[hidden] { display: none; }
+.industry-panel-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; border-bottom: 1px solid #777; padding-bottom: 6px; }
+.industry-panel-header div { display: flex; flex-direction: column; gap: 2px; }
+.industry-panel-header b { font-size: 11px; }
+.industry-panel-header small { color: #999; font-size: 7px; }
+.industry-status { margin: 7px 0; padding: 5px; border: 1px solid #777; color: #f4ef00; font-weight: bold; }
+.industry-label { display: grid; gap: 4px; margin: 7px 0; color: #aaa; font-size: 8px; }
+.industry-label select { width: 100%; color: #fff; background: #222; border: 1px solid #888; padding: 5px; font: inherit; }
+.industry-section-title { color: #f4ef00; font-weight: bold; font-size: 8px; letter-spacing: .08em; margin: 9px 0 4px; }
+.industry-row { display: flex; align-items: center; gap: 6px; padding: 4px 2px; border-bottom: 1px solid #292929; }
+.industry-row span { flex: 1; }
+.industry-row b { color: #eee; }
+.industry-muted { color: #999; padding: 4px 0; font-size: 8px; }
+.industry-actions { display: grid; grid-template-columns: 1fr; gap: 4px; }
+.industry-action { color: #fff; background: #242424; border: 1px solid #aaa; padding: 5px 7px; font: inherit; text-align: left; }
+.industry-action:hover:not(:disabled) { background: #444; }
+.industry-action:disabled { opacity: .35; cursor: not-allowed; }
+.industry-action.small { padding: 2px 6px; }
+.industry-action.danger { color: #ff9a9a; border-color: #a44; }
+.industry-progress { margin-top: 8px; color: #bbb; font-size: 8px; }
+.industry-meter { height: 7px; margin-top: 4px; background: #292929; border: 1px solid #666; }
+.industry-meter i { display: block; height: 100%; background: #f4ef00; }
+.industry-footer { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 9px; padding-top: 7px; border-top: 1px solid #555; color: #777; font-size: 7px; }
+.item-icon-wrap { display: grid; place-items: center; width: 32px; height: 32px; }
+.item-icon { display: block; width: 32px; height: 32px; object-fit: contain; image-rendering: pixelated; }
+.item-fallback { font-size: 21px; line-height: 1; color: #f4ef00; text-align: center; }
+.hotbar-slot .item-icon-wrap { width: 29px; height: 29px; }
+.hotbar-slot .item-icon { width: 29px; height: 29px; }
+.inventory-slot .item-icon-wrap { width: 32px; height: 32px; }
+.inventory-layout { align-items: start; }
+#crafting-recipes { max-height: 430px; overflow: auto; padding-right: 4px; }
+.recipe-group { border: 1px solid #444; margin: 5px 0; padding: 4px 7px; }
+.recipe-group summary { color: #f4ef00; cursor: pointer; font-size: 9px; font-weight: bold; padding: 4px 0; }
+.recipe-group .craft-recipe { padding: 6px 0; }
+@media (max-width: 650px) {
+  .industry-inspector { right: 7px; bottom: 62px; width: min(58%, 330px); max-height: 55%; padding: 6px 8px; border-width: 2px; }
+}
+
+.industry-item-icon { width: 27px; height: 27px; object-fit: contain; image-rendering: pixelated; flex: 0 0 27px; }
+
+
+/* Crafting menu usability fixes */
+.craft-section { min-width: 0; display: flex; flex-direction: column; }
+#crafting-recipes { max-height: min(430px, 58vh); overflow-y: auto; overflow-x: hidden; padding: 0 6px 3px 0; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.craft-recipe { align-items: center; }
+.craft-recipe-info { display: flex; flex: 1 1 auto; min-width: 0; flex-direction: column; gap: 4px; }
+.craft-recipe-info small { line-height: 1.45; overflow-wrap: anywhere; }
+.craft-recipe-info em { color: #a7a7a7; font-style: normal; font-size: 8px; }
+.craft-recipe button { flex: 0 0 auto; min-width: 55px; min-height: 28px; cursor: pointer; }
+.craft-recipe button:focus-visible, .recipe-group summary:focus-visible { outline: 2px solid #f4ef00; outline-offset: 2px; }
+.recipe-group summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; list-style-position: inside; user-select: none; }
+.recipe-group summary span { color: #aaa; font-weight: normal; }
+.craft-empty { color: #999; font-size: 8px; }
+.material-line { padding: 7px; background: #151515; border: 1px solid #444; }
+@media (max-width: 650px) {
+  #crafting-recipes { max-height: 38vh; }
+  .craft-recipe-info small { font-size: 7px; }
+  .craft-recipe-info em { font-size: 7px; }
+}
+
+/* Inventory order: the hotbar is the first row of the 36-slot inventory. */
+.inventory-hotbar-section { display: grid; justify-items: start; gap: 7px; padding: 11px 0 12px; border-bottom: 1px solid #555; }
+.inventory-hotbar.hotbar-bar { position: relative; left: auto; bottom: auto; transform: none; margin: 0; width: max-content; max-width: 100%; flex-wrap: wrap; padding: 4px; gap: 4px; }
+.inventory-hotbar .hotbar-slot { width: clamp(38px, 4.6vw, 48px); height: clamp(42px, 5.2vw, 54px); }
+.inventory-hotbar .hotbar-slot.chosen { outline: 2px solid #f4ef00; outline-offset: 2px; }
+.inventory-slot.chosen { outline: 2px solid #f4ef00; outline-offset: 1px; }
+.industry-fluid-indicator { display: inline-grid; place-items: center; flex: 0 0 22px; width: 20px; height: 20px; border-radius: 50%; color: var(--fluid-color, #ff9a4d); font-size: 18px; text-shadow: 0 0 7px var(--fluid-color, #ff9a4d); }
+.industry-fluid-note { color: #ffca83; font-size: 7px; margin-left: 3px; }
+
+/* Keep the inspected Furnace above the inventory overlay so items can be dragged into its input slot. */
+.industry-inspector.inventory-drag-open { z-index: 22; }
+.furnace-input-slot { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; min-height:58px; margin:5px 0; padding:8px; border:2px dashed #f4ef00; background:#171717; color:#fff; text-align:center; }
+.furnace-input-slot b { color:#f4ef00; font-size:8px; letter-spacing:.08em; }
+.furnace-input-slot span { font-size:10px; }
+.furnace-input-slot:focus, .furnace-input-slot:hover { background:#292929; }
+
+/* Stonecutter-style crafting: one material input, filtered output choices, one selected result. */
+.stonecutter-workbench { display:grid; grid-template-columns:minmax(76px, .72fr) minmax(0, 1.5fr); gap:8px; padding:8px; background:#111; border:1px solid #555; }
+.stonecutter-label { display:flex; justify-content:space-between; align-items:center; color:#f4ef00; font-size:8px; font-weight:bold; letter-spacing:.05em; margin-bottom:6px; }
+.stonecutter-label span { color:#aaa; font-weight:normal; }
+.stonecutter-input-slot { min-height:92px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:4px; border:2px dashed #777; background:#1c1c1c; color:#ddd; text-align:center; padding:5px; }
+.stonecutter-input-slot:hover, .stonecutter-input-slot:focus { border-color:#f4ef00; background:#292929; }
+.stonecutter-input-slot > b { font-size:9px; }
+.stonecutter-input-slot > span { font-size:8px; color:#aaa; }
+.stonecutter-input-slot > small { color:#aaa; font-size:7px; }
+.craft-stonecutter-icon { width:28px; height:28px; object-fit:contain; image-rendering:pixelated; }
+.craft-stonecutter-fallback { color:#eee; font-size:8px; text-align:center; }
+.stonecutter-clear { width:100%; margin-top:5px; padding:5px 2px; background:#222; color:#bbb; border:1px solid #555; font-size:8px; cursor:pointer; }
+.stonecutter-clear:disabled { opacity:.35; cursor:default; }
+.stonecutter-results { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px; max-height:112px; overflow:auto; }
+.stonecutter-recipe { position:relative; min-width:0; min-height:48px; aspect-ratio:1; display:flex; align-items:center; justify-content:center; padding:5px; background:#202020; border:1px solid #555; color:#eee; cursor:pointer; }
+.stonecutter-recipe:hover { background:#303030; border-color:#aaa; }
+.stonecutter-recipe.selected { border:2px solid #f4ef00; background:#343414; }
+.stonecutter-recipe .craft-stonecutter-icon { width:32px; height:32px; }
+.stonecutter-recipe .craft-stonecutter-fallback { font-size:7px; text-align:center; overflow-wrap:anywhere; }
+.stonecutter-recipe b { position:absolute; right:2px; bottom:1px; padding:1px 3px; background:#111; color:#f4ef00; font-size:8px; }
+.stonecutter-recipe small { position:absolute; top:1px; right:2px; color:#ff7777; font-size:9px; font-weight:bold; }
+.stonecutter-results { grid-template-columns:repeat(auto-fill,minmax(44px,1fr)); gap:4px; }
+.stonecutter-selected { margin-top:7px; padding:7px; background:#171717; border:1px solid #444; }
+.stonecutter-output-preview { display:flex; align-items:center; gap:7px; min-height:32px; color:#fff; font-size:9px; }
+.stonecutter-requirements { display:grid; gap:3px; margin:6px 0; }
+.stonecutter-requirement { display:flex; align-items:center; gap:5px; color:#ccc; font-size:8px; }
+.stonecutter-requirement .craft-stonecutter-icon { width:20px; height:20px; }
+.stonecutter-requirement b { margin-left:auto; color:#f4ef00; }
+.stonecutter-craft { width:100%; min-height:30px; background:#343414; color:#f4ef00; border:1px solid #aaa52a; font-weight:bold; font-size:9px; cursor:pointer; }
+.stonecutter-craft:disabled { opacity:.4; cursor:default; }
+@media (max-width:650px) { .stonecutter-workbench { grid-template-columns:72px minmax(0,1fr); gap:5px; padding:5px; } .stonecutter-results { grid-template-columns:1fr; max-height:100px; } }
+
+/* Machine-wide Stonecutter interface. Inventory crafting retains its original recipe groups. */
+.industry-stonecutter-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(42px,1fr)); gap:5px; max-height:150px; overflow:auto; padding:4px 0; }
+.industry-stonecutter-grid .stonecutter-recipe { min-height:46px; aspect-ratio:1; }
+.industry-stonecutter-inputs { display:flex; flex-wrap:wrap; gap:5px; padding:5px 0; }
+.industry-input-icon { position:relative; display:flex; align-items:center; justify-content:center; width:48px; height:48px; background:#202020; border:1px solid #555; cursor:pointer; }
+.industry-input-icon img,.industry-input-icon .industry-item-icon { width:30px; height:30px; object-fit:contain; image-rendering:pixelated; }
+.industry-input-icon b { position:absolute; right:2px; bottom:1px; color:#f4ef00; background:#111; padding:1px 3px; font-size:8px; }
+.industry-input-icon:disabled { opacity:.35; cursor:default; }
+.industry-icon-fallback { color:#eee; font-size:8px; text-align:center; overflow-wrap:anywhere; }
+
+/* Inventory stack drag feedback. */
+.inventory-slot.drag-target, .hotbar-slot.drag-target { outline: 2px solid #f4ef00; outline-offset: 1px; background: #343414; }
+.inventory-slot.drag-source, .hotbar-slot.drag-source { opacity: .45; }

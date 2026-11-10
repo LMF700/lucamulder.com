@@ -1,0 +1,11 @@
+const fs = require('fs'); const path = require('path'); const assert = require('assert');
+const root = path.join(__dirname, '..');
+const game = fs.readFileSync(path.join(root, 'game.js'), 'utf8');
+const ui = fs.readFileSync(path.join(root, 'systems', 'industry-ui.js'), 'utf8');
+assert(game.includes('<details class="recipe-group"'), 'Inventory crafting must retain its original grouped recipe UI');
+assert(game.includes('DEVICES & BUILDING') && game.includes('HAND-CRAFTED COMPONENTS'), 'Original crafting categories must remain');
+assert(ui.includes('data-machine-recipe'), 'Machine output choices must be selectable');
+assert(ui.includes('industry-stonecutter-grid'), 'Machine recipes must use an icon grid');
+assert(ui.includes('data-machine-input'), 'Machine inspectors must accept dragged input items');
+assert(!ui.includes('<select id="industry-recipe"'), 'Machine inspectors must not use recipe dropdowns');
+console.log('Machine Stonecutter UI tests passed.');
