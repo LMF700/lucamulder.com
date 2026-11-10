@@ -143,6 +143,7 @@
     iron: { name: 'Iron Channel', inputs: { ironPlate: 1 }, output: { iron: 25 }, station: 'inventory', seconds: 0 },
     concrete: {name: 'Concrete Channel', inputs: {StonePowder: 10}, output: {concrete: 50}, station: 'inventory', seconds: 0 },
     glass: {name: 'Glass Channel', inputs: {glassPane: 3}, output: {glass: 33}, station: 'inventory', seconds: 0 },
+    brass: {name: 'Brass Channel', inputs: {brassPlate: 2}, output: {brass: 50}, station: 'inventory', seconds: 0 },
     wire: {name: "Wire", inputs: {copperIngot: 1, silicon: 1 }, output: {wire: 10}, station: 'inventory', seconds: 0 },
   };
 
