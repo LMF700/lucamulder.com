@@ -2932,6 +2932,6 @@ function drawTerrain() {
   initializeIndustry();
   generateTerrain();
   updateHotbar();
-  showToast('You start with a Stone Pickaxe and Stone Axe. Press H or use the top-right button to highlight resources.');
+  showToast('You have stone tools. Press H or use the button to highlight resources.');
   requestAnimationFrame(frame);
 })();
