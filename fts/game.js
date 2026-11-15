@@ -2401,9 +2401,9 @@ function drawTerrain() {
     if (shelter.poles >= 4) { showToast('This shelter is already complete.'); return; }
     consumeItem('woodPole', 1);
     shelter.poles++;
-    if (shelter.poles === 1) showToast('Base placed · place a second pole for the angled roof.');
-    else if (shelter.poles === 2) showToast('Roof pole placed and angled automatically · add the two side supports.');
-    else if (shelter.poles === 3) showToast('One side support placed · add the final side support.');
+    if (shelter.poles === 1) showToast('Base placed. place a second pole for the angled roof.');
+    else if (shelter.poles === 2) showToast('Roof pole placed and angled automatically. add the two side supports.');
+    else if (shelter.poles === 3) showToast('One side support placed. add the final side support.');
     if (shelter.poles === 4) {
       shelter.complete = true;
       showToast('Shelter complete! Go close to it and click it to crouch underneath during storms.');
@@ -2911,10 +2911,6 @@ function drawTerrain() {
     keys.add(key);
     if (key === ' ' && !event.repeat) jump();
     if (key === 'e' && !event.repeat) toggleCrouchAtShelter();
-    if (key === 'r' && !event.repeat) {
-      if (state.tool === 'belt') { state.beltRotation = (state.beltRotation + 90) % 360; showToast(`Conveyor direction: ${state.beltRotation}°`); }
-      else generateTerrain();
-    }
     if (key === 'escape') { state.anchorNodeId = null; setTool('select'); showToast('Construction cancelled.'); }
   });
   window.addEventListener('keyup', event => keys.delete(event.key.toLowerCase()));
