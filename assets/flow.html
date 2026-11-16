@@ -1,57 +1,98 @@
+
 <!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Flowing Wave</title>
+
 <style>
-  :root { color-scheme: dark; }
-  * { box-sizing: border-box; }
-  html, body {
-    margin: 0;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    background: #080807;
-  }
-  canvas {
-    display: block;
-    width: 100%;
-    height: 100%;
-  }
-  .vignette {
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    background:
-      linear-gradient(to bottom, rgba(0,0,0,.35), transparent 18%, transparent 82%, rgba(0,0,0,.38)),
-      radial-gradient(ellipse at center, rgba(8,8,7,.96) 0%, rgba(8,8,7,.82) 24%, rgba(8,8,7,.12) 62%, transparent 100%);
-  }
+:root {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #080807;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(0,0,0,.35),
+      transparent 18%,
+      transparent 82%,
+      rgba(0,0,0,.38)
+    ),
+    radial-gradient(
+      ellipse at center,
+      rgba(8,8,7,.96) 0%,
+      rgba(8,8,7,.82) 24%,
+      rgba(8,8,7,.12) 62%,
+      transparent 100%
+    );
+}
 </style>
 </head>
+
 <body>
-<canvas id="wave" aria-label="Animated flowing ASCII wave"></canvas>
+
+<canvas id="wave"></canvas>
 <div class="vignette"></div>
+
 <script>
 (() => {
   const canvas = document.getElementById("wave");
   const ctx = canvas.getContext("2d");
+
   const chars = " .,:;-=+*#/\\";
-  let width = 0, height = 0, dpr = 1;
-  let cellW = 9, cellH = 13, cols = 0, rows = 0;
-  let start = performance.now();
+
+  let width = 0;
+  let height = 0;
+  let dpr = 1;
+
+  let cellW = 9;
+  let cellH = 13;
+  let cols = 0;
+  let rows = 0;
+
+  const start = performance.now();
 
   function resize() {
     dpr = Math.min(window.devicePixelRatio || 1, 2);
+
     width = window.innerWidth;
     height = window.innerHeight;
+
     canvas.width = Math.floor(width * dpr);
     canvas.height = Math.floor(height * dpr);
+
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
     const size = Math.max(8, Math.min(12, width / 115));
-    ctx.font = `${size}px "Courier New", monospace`;
+
+    ctx.font = `${size}px Verdana`;
+
     cellW = size * 0.61;
     cellH = size * 1.05;
+
     cols = Math.ceil(width / cellW) + 1;
     rows = Math.ceil(height / cellH) + 1;
   }
@@ -63,60 +104,123 @@
 
   function draw(now) {
     const t = (now - start) / 1000;
+
     ctx.clearRect(0, 0, width, height);
+
     ctx.fillStyle = "#080807";
     ctx.fillRect(0, 0, width, height);
-    ctx.font = `${Math.max(8, Math.min(12, width / 115))}px "Courier New", monospace`;
+
+    const size = Math.max(8, Math.min(12, width / 115));
+
+    ctx.font = `${size}px Verdana`;
     ctx.textBaseline = "top";
 
     for (let y = 0; y < rows; y++) {
       const py = y * cellH;
       const ny = py / Math.max(1, height);
+
       for (let x = 0; x < cols; x++) {
         const px = x * cellW;
         const nx = px / Math.max(1, width);
 
-        // A broad travelling surface, made from several overlapping waves.
         const flow =
-          Math.sin(nx * 8.0 - t * 0.72 + Math.sin(ny * 5.5 + t * 0.24) * 1.1) * 0.48 +
-          Math.sin(ny * 11.0 + nx * 3.2 - t * 0.48) * 0.27 +
-          Math.sin(nx * 15.0 + ny * 7.0 - t * 0.95) * 0.16 +
-          Math.cos(nx * 4.0 - ny * 13.0 + t * 0.33) * 0.09;
+          Math.sin(
+            nx * 8.0 - t * 0.72 +
+            Math.sin(ny * 5.5 + t * 0.24) * 1.1
+          ) * 0.48 +
 
-        const ridges = Math.abs(Math.sin((ny * 8.5 + flow * 1.8) * Math.PI + nx * 2.2 - t * 0.8));
-        const texture = Math.sin(nx * 37 + ny * 19 - t * 1.3) * 0.5 + 0.5;
-        const intensity = Math.max(0, Math.min(1, 0.18 + ridges * 0.58 + texture * 0.18 + flow * 0.12));
+          Math.sin(
+            ny * 11.0 + nx * 3.2 - t * 0.48
+          ) * 0.27 +
 
-        // Keep the middle comparatively quiet, like the reference page.
-        const centerDist = Math.sqrt(Math.pow((nx - 0.5) * 1.05, 2) + Math.pow((ny - 0.52) * 1.35, 2));
+          Math.sin(
+            nx * 15.0 + ny * 7.0 - t * 0.95
+          ) * 0.16 +
+
+          Math.cos(
+            nx * 4.0 - ny * 13.0 + t * 0.33
+          ) * 0.09;
+
+        const ridges = Math.abs(
+          Math.sin(
+            (ny * 8.5 + flow * 1.8) *
+            Math.PI + nx * 2.2 - t * 0.8
+          )
+        );
+
+        const texture =
+          Math.sin(nx * 37 + ny * 19 - t * 1.3) * 0.5 + 0.5;
+
+        const intensity = Math.max(
+          0,
+          Math.min(
+            1,
+            0.18 +
+            ridges * 0.58 +
+            texture * 0.18 +
+            flow * 0.12
+          )
+        );
+
+        const centerDist = Math.sqrt(
+          Math.pow((nx - 0.5) * 1.05, 2) +
+          Math.pow((ny - 0.52) * 1.35, 2)
+        );
+
         const reveal = smoothstep(0.20, 0.72, centerDist);
-        const edgeFade = Math.min(1, smoothstep(0.0, 0.09, nx), smoothstep(0.0, 0.07, ny),
-                                  smoothstep(0.0, 0.07, 1 - nx), smoothstep(0.0, 0.07, 1 - ny));
-        const alpha = (0.12 + intensity * 0.62) * reveal * edgeFade;
+
+        const edgeFade = Math.min(
+          1,
+          smoothstep(0.0, 0.09, nx),
+          smoothstep(0.0, 0.07, ny),
+          smoothstep(0.0, 0.07, 1 - nx),
+          smoothstep(0.0, 0.07, 1 - ny)
+        );
+
+        const alpha =
+          (0.12 + intensity * 0.62) *
+          reveal *
+          edgeFade;
+
         if (alpha < 0.035) continue;
 
-        const index = Math.min(chars.length - 1, Math.floor(intensity * (chars.length - 1)));
+        const index = Math.min(
+          chars.length - 1,
+          Math.floor(intensity * (chars.length - 1))
+        );
+
         const ch = chars[index];
-        const warm = Math.max(0, Math.min(1, (intensity - 0.58) * 1.7));
-        const r = Math.round(116 + warm * 68);
-        const g = Math.round(112 + warm * 55);
-        const b = Math.round(99 + warm * 28);
+
+        const warm = Math.max(
+          0,
+          Math.min(1, (intensity - 0.58) * 2.7)
+        );
+
+        const r = Math.round(129 + warm * 68);
+        const g = Math.round(42 + warm * 55);
+        const b = Math.round(146 + warm * 28);
+
         ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
         ctx.fillText(ch, px, py);
       }
     }
 
-    // Fine CRT scanlines.
+    // CRT scanlines
     ctx.fillStyle = "rgba(0,0,0,0.16)";
-    for (let y = 0; y < height; y += 3) ctx.fillRect(0, y, width, 1);
+
+    for (let y = 0; y < height; y += 3) {
+      ctx.fillRect(0, y, width, 1);
+    }
 
     requestAnimationFrame(draw);
   }
 
   window.addEventListener("resize", resize);
+
   resize();
   requestAnimationFrame(draw);
 })();
 </script>
+
 </body>
 </html>

@@ -19,6 +19,7 @@
     concrete: document.getElementById('concrete-count'),
     glass: document.getElementById('glass-count'),
     chute: document.getElementById('chute-count'),
+    brass: document.getElementById('brass-count'),
     modules: document.getElementById('module-counts'),
     inspection: document.getElementById('inspection'),
     inspectionTitle: document.getElementById('inspection-title'),
@@ -28,7 +29,7 @@
 
   const W = 1000;
   const H = 700;
-  const FONT = 'Verdana, Geneva, sans-serif';
+  const FONT = 'Verdana';
   const COLORS = {
     grass: '#00ff00', grassDark: '#00a800', soil: '#805400', soilDark: '#4c3000', soilEdge: '#171717',
     sand: '#e5df20', sandEdge: '#b3aa17', water: '#287cf5', waterDark: '#084bb9', waterEdge: '#0861d6',
@@ -2889,16 +2890,27 @@ function drawTerrain() {
   canvas.addEventListener('pointerleave', () => { state.pointer.inside = false; state.pointer.down = false; });
   canvas.addEventListener('contextmenu', event => event.preventDefault());
 
-  window.addEventListener('wheel', event => {
-    if (state.inventoryOpen || state.hotbar.every(slot => !slot)) return;
-    event.preventDefault();
-    let index = state.selectedHotbar < 0 ? 0 : state.selectedHotbar;
-    for (let attempt = 0; attempt < 9; attempt++) {
-      index = (index + (event.deltaY > 0 ? 1 : -1) + 9) % 9;
-      const id = state.hotbar[index];
-      if (id && itemCount(id) > 0) { selectHotbar(index); break; }
-    }
-  }, { passive: false });
+window.addEventListener('wheel', event => {
+  const menuOpen = state.inventoryOpen || !!state.industryUI?.currentId;
+  const typing = event.target?.closest?.(
+    'input, textarea, select, [contenteditable="true"]'
+  );
+
+  if (menuOpen || typing) return;
+
+  event.preventDefault();
+
+  const current = state.selectedHotbar < 0
+    ? 0
+    : state.selectedHotbar;
+
+  const next = (
+    current + (event.deltaY > 0 ? 1 : -1) + state.hotbar.length
+  ) % state.hotbar.length;
+
+  // Empty slots are selectable too.
+  selectHotbar(next);
+}, { passive: false });
 
   window.addEventListener('keydown', event => {
     const key = event.key.toLowerCase();
