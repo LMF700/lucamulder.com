@@ -6,7 +6,7 @@ const game = fs.readFileSync(path.join(__dirname, '..', 'game.js'), 'utf8');
 // Grass colour must follow actual world Y, not layer index, X position,
 // camera position, or distance from the player. Soil retains layer-based shading.
 assert.match(game, /function terrainGrassColorAtHeight\(worldY\)/, 'terrain grass gradient should be world-height based');
-assert.match(game, /let fill = terrainGrassColorAtHeight\(yMid\)/, 'surface cells should shade from actual terrain height');
+assert.match(game, /const fill = terrainGrassColorAtHeight\(yMid\)/, 'surface cells should shade from actual terrain height');
 assert.match(game, /soilTop: `rgb\(\$\{channel\(66, 150\)\}/, 'exposed soil should shade with geological elevation');
 assert.doesNotMatch(game, /terrainVisualTierAt|grassGradient|createRadialGradient/, 'old shelf-index or local radial grass shading must not remain');
 assert.match(game, /ctx\.strokeStyle = fill;\s*ctx\.lineWidth = 1\.25;[\s\S]*ctx\.stroke\(\)/, 'terrain quad seams should be hidden with same-colour overlap');

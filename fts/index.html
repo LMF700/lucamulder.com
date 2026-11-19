@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#00e900">
+  <meta name="theme-color" content="#102b2b">
   <meta name="description" content="Fill The Sea. A game where you explore a vast procedural world, gather resources, survive storms, and automate industrial production.">
-  <title>Fill The Sea Proto v1.8.6</title>
+  <title>Fill The Sea — Into the Deep</title>
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="../assets/mvb.png">
 </head>
@@ -14,13 +14,42 @@
     <div id="game-frame">
       <canvas id="game" width="1000" height="700" aria-label="Fill The Sea expansive world with 25 stepped elevation layers with no ramps. Move with WASD and Space, use keys 1-9 for hotbar slots, and right click a machine with an ingredient to use it."></canvas>
 
+      <section id="title-screen" class="title-screen" aria-label="Main menu">
+        <div class="title-ornament" aria-hidden="true"><i>✦</i><i>✧</i><i>✦</i><i>✧</i><i>✦</i><i>✧</i><i>✦</i></div>
+        <div class="title-card">
+          <div class="title-eyebrow">A WORLD WAITING BELOW</div>
+          <h1>FILL <span>THE</span> SEA</h1>
+          <div class="title-rule"><b></b><span>✦</span><b></b></div>
+          <p class="title-tagline">Make a little life. Build something impossible.</p>
+          <button id="start-game" class="title-start" type="button"><span>▶</span> BEGIN YOUR JOURNEY</button>
+          <button id="audio-toggle" class="audio-toggle" type="button" aria-pressed="false">♫ &nbsp; SOUND OFF</button>
+          <div class="title-version">PROTOTYPE 01.9.1 <span>•</span> A PROCEDURAL ADVENTURE</div>
+        </div>
+        <div class="title-bottom" aria-hidden="true">WASD TO WANDER <span>◆</span> SPACE TO RISE <span>◆</span> TAB TO MAKE</div>
+      </section>
+
       <section class="world-hint" aria-label="Current activity">
         <div id="mode-label">EXPLORATION</div>
         <div id="instruction">Gather resources and build your way up.</div>
       </section>
+      <button id="tutorial-toggle" class="tutorial-toggle" type="button" title="Open tutorial (T)">Tutorial <kbd>T</kbd></button>
+      <section id="tutorial-panel" class="tutorial-panel" aria-label="Game tutorial" hidden>
+        <header class="tutorial-header">
+          <div><span id="tutorial-progress">FIELD GUIDE · 1 / 17</span><strong id="tutorial-title">Explore the shore</strong></div>
+          <button id="tutorial-close" class="tutorial-close" type="button" aria-label="Close tutorial">×</button>
+        </header>
+        <p id="tutorial-copy"></p>
+        <footer class="tutorial-actions">
+          <button id="tutorial-back" type="button">Back</button>
+          <button id="tutorial-skip" type="button">Skip</button>
+          <button id="tutorial-next" type="button">Next</button>
+        </footer>
+      </section>
+      <div id="tutorial-arrow" class="tutorial-arrow" aria-hidden="true" hidden><b>➤</b><span data-tutorial-arrow-label>TRY THIS</span></div>
 
       <button id="inventory-tab" class="inventory-tab" type="button" title="Open inventory (Tab)">Inventory <kbd>Tab</kbd></button>
       <button id="resource-highlight" class="highlight-button" type="button" title="Highlight visible resources (H)" aria-pressed="false">Highlight Resources [H]</button>
+      <button id="sound-control" class="sound-control" type="button" title="Toggle game audio" aria-pressed="false">♫ SOUND OFF</button>
 
       <nav id="hotbar-bar" class="hotbar-bar" aria-label="Hotbar">
         <!-- Nine hotbar slots are rendered by game.js. -->
@@ -81,7 +110,7 @@
       </div>
     </div>
     <footer class="page-footer">
-      <span>Fill The Sea v1.8.6</span>
+      <span>Fill The Sea v1.9.1</span>
       <span>by <a href="https://lucamulder.com" target="_blank" rel="noopener">PyPower</a></span>
     </footer>
   </main>

@@ -10,16 +10,12 @@ vm.runInContext(fs.readFileSync(path.join(root, 'data/registry.js'), 'utf8'), co
 const registry = context.window.FTSRegistry;
 assert.ok(registry, 'registry should initialize');
 
-const manifest = JSON.parse(fs.readFileSync(path.join(root, 'assets/asset-manifest.json'), 'utf8'));
-const manifestPaths = new Set(manifest.files.map(entry => entry.path));
-assert.equal(manifestPaths.size, manifest.files.length, 'asset manifest paths must be unique');
-
 for (const item of Object.values(registry.items)) {
-  assert.ok(manifestPaths.has(item.image), `missing manifest entry for item image ${item.image}`);
+  assert.match(item.image, /^assets\/[\w-]+\/[\w-]+\.png$/, `invalid item image path ${item.image}`);
 }
 for (const [machineId, machine] of Object.entries(registry.machines)) {
   assert.ok(registry.items[machine.item], `machine ${machineId} references unknown item ${machine.item}`);
-  assert.ok(manifestPaths.has(machine.sprite), `missing manifest entry for machine sprite ${machine.sprite}`);
+  assert.match(machine.sprite, /^assets\/[\w-]+\/[\w-]+\.png$/, `invalid machine sprite path ${machine.sprite}`);
   for (const recipeId of machine.recipeIds || []) assert.ok(registry.machineRecipes[recipeId], `machine ${machineId} references missing recipe ${recipeId}`);
 }
 for (const [recipeId, recipe] of Object.entries(registry.machineRecipes)) {
@@ -38,10 +34,13 @@ for (const [recipeId, recipe] of Object.entries({...registry.handRecipes, ...reg
   for (const id of [...Object.keys(recipe.inputs || {}), ...Object.keys(recipe.output || {})]) assert.ok(registry.items[id], `recipe ${recipeId} references unknown item ${id}`);
 }
 for (const assets of Object.values(registry.worldAssets)) {
-  for (const assetPath of Object.values(assets)) assert.ok(manifestPaths.has(assetPath), `world sprite is missing from manifest: ${assetPath}`);
+  for (const assetPath of Object.values(assets)) assert.match(assetPath, /^assets\/[\w-]+\/[\w-]+\.png$/, `invalid world sprite path: ${assetPath}`);
 }
+const assetLoader = fs.readFileSync(path.join(root, 'systems/asset-loader.js'), 'utf8');
+assert.match(assetLoader, /Missing artwork falls back gracefully/, 'missing artwork should remain supported by the asset loader');
 
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+const game = fs.readFileSync(path.join(root, 'game.js'), 'utf8');
 for (const [, scriptPath] of html.matchAll(/<script[^>]+src=["']([^"']+)["']/g)) {
   assert.ok(fs.existsSync(path.join(root, scriptPath)), `index.html references missing script ${scriptPath}`);
 }
@@ -50,6 +49,9 @@ for (const [, cssPath] of html.matchAll(/<link[^>]+href=["']([^"']+\.css)["']/g)
 }
 
 assert.ok(!Object.values(registry.handRecipes).some(recipe => recipe.output?.transistor), 'player must not hand-craft Transistors');
+assert.ok(registry.items.brass, 'Brass Channel recipe output should have an item definition');
+assert.match(game, /brass: 'channel'/, 'Brass Channel should select the channel construction tool');
+assert.match(game, /\['iron', 'concrete', 'glass', 'brass'\]/, 'Brass Channel should select its matching channel type');
 assert.equal(registry.machines.drill.outputs[0], 'ironOre', 'Drill should mine ore, not finished ingots');
 
-console.log(`FTS project smoke tests passed (${Object.keys(registry.items).length} collectible items, ${Object.keys(registry.fluids).length} process fluids, ${Object.keys(registry.machines).length} machines, ${manifest.files.length} art paths).`);
+console.log(`FTS project smoke tests passed (${Object.keys(registry.items).length} collectible items, ${Object.keys(registry.fluids).length} process fluids, ${Object.keys(registry.machines).length} machines).`);

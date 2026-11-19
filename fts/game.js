@@ -35,6 +35,111 @@
     sand: '#e5df20', sandEdge: '#b3aa17', water: '#287cf5', waterDark: '#084bb9', waterEdge: '#0861d6',
     ink: '#080808', white: '#f5f5f5', yellow: '#f4ef00', grey: '#929292', greyDark: '#656565'
   };
+  const sound = { context: null, master: null, enabled: false, preferenceChosen: false, timer: null, step: 0, nextNoteTime: 0, footstepTimer: 0 };
+  const MUSIC = {
+    beat: 0.42,
+    chords: [
+      { pad: [130.81, 164.81, 196.00], bass: 65.41 },
+      { pad: [110.00, 130.81, 164.81], bass: 55.00 },
+      { pad: [87.31, 130.81, 174.61], bass: 43.65 },
+      { pad: [98.00, 146.83, 196.00], bass: 49.00 }
+    ],
+    melody: [523.25,659.25,587.33,784.00,659.25,587.33,493.88,587.33,440.00,523.25,587.33,659.25,392.00,493.88,587.33,659.25]
+  };
+  function audioNote(frequency, start, duration, options = {}) {
+    const context = sound.context;
+    const osc = context.createOscillator();
+    const filter = context.createBiquadFilter();
+    const envelope = context.createGain();
+    const peak = options.gain ?? 0.025;
+    osc.type = options.type || 'triangle';
+    osc.frequency.setValueAtTime(frequency, start);
+    if (options.detune) osc.detune.setValueAtTime(options.detune, start);
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(options.cutoff || 2600, start);
+    filter.Q.value = 0.7;
+    envelope.gain.setValueAtTime(0.0001, start);
+    envelope.gain.exponentialRampToValueAtTime(peak, start + (options.attack || 0.018));
+    envelope.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+    osc.connect(filter); filter.connect(envelope); envelope.connect(sound.master);
+    osc.start(start); osc.stop(start + duration + 0.025);
+  }
+  function scheduleMusic() {
+    if (!sound.enabled || !sound.context) return;
+    const now = sound.context.currentTime;
+    while (sound.nextNoteTime < now + 0.18) {
+      const step = sound.step % MUSIC.melody.length;
+      const chord = MUSIC.chords[Math.floor(step / 4) % MUSIC.chords.length];
+      if (step % 4 === 0) {
+        chord.pad.forEach((frequency, index) => audioNote(frequency, sound.nextNoteTime, 1.55, {
+          type: 'triangle', gain: index === 0 ? 0.012 : 0.007, cutoff: 1050, attack: 0.12
+        }));
+      }
+      audioNote(MUSIC.melody[step], sound.nextNoteTime, 0.34, { gain: 0.027, cutoff: 3200 });
+      if (step % 4 === 0) audioNote(chord.bass, sound.nextNoteTime, 0.75, { type: 'triangle', gain: 0.025, cutoff: 650, attack: 0.06 });
+      sound.nextNoteTime += MUSIC.beat;
+      sound.step++;
+    }
+  }
+  function setSoundEnabled(enabled) {
+    sound.enabled = enabled;
+    const button = document.getElementById('audio-toggle');
+    if (button) {
+      button.setAttribute('aria-pressed', String(enabled));
+      button.innerHTML = enabled ? '♫ &nbsp; SOUND ON' : '♫ &nbsp; SOUND OFF';
+    }
+    const gameButton = document.getElementById('sound-control');
+    if (gameButton) {
+      gameButton.setAttribute('aria-pressed', String(enabled));
+      gameButton.textContent = enabled ? '♫ SOUND ON' : '♫ SOUND OFF';
+    }
+    if (!enabled) {
+      if (sound.master && sound.context) sound.master.gain.setTargetAtTime(0, sound.context.currentTime, .25);
+      if (sound.timer !== null) { clearInterval(sound.timer); sound.timer = null; }
+      return;
+    }
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) { if (button) button.textContent = 'AUDIO UNAVAILABLE'; return; }
+    if (!sound.context) {
+      sound.context = new AudioContextClass();
+      sound.master = sound.context.createGain();
+      sound.master.gain.value = 0;
+      const compressor = sound.context.createDynamicsCompressor();
+      compressor.threshold.value = -22; compressor.knee.value = 18;
+      compressor.ratio.value = 4; compressor.attack.value = 0.008; compressor.release.value = 0.18;
+      sound.master.connect(compressor); compressor.connect(sound.context.destination);
+    }
+    sound.context.resume();
+    sound.master.gain.setTargetAtTime(.24, sound.context.currentTime, .18);
+    if (sound.timer === null) {
+      sound.step = 0;
+      sound.nextNoteTime = sound.context.currentTime + 0.08;
+      scheduleMusic();
+      sound.timer = setInterval(scheduleMusic, 40);
+    }
+  }
+  function playUiChime() {
+    if (!sound.enabled || !sound.context) return;
+    const now = sound.context.currentTime + 0.01;
+    audioNote(587.33, now, 0.24, { gain: 0.055, cutoff: 4200 });
+    audioNote(880.00, now + 0.075, 0.38, { gain: 0.035, cutoff: 5200 });
+  }
+  function playSoundEffect(kind) {
+    if (!sound.enabled || !sound.context) return;
+    const now = sound.context.currentTime + 0.005;
+    if (kind === 'step') {
+      audioNote(95, now, 0.09, { gain: 0.035, cutoff: 260, attack: 0.008 });
+    } else if (kind === 'mine') {
+      audioNote(330, now, 0.14, { gain: 0.06, cutoff: 1500, attack: 0.004 });
+      audioNote(196, now + 0.035, 0.2, { type: 'square', gain: 0.025, cutoff: 900, attack: 0.004 });
+    } else if (kind === 'chop') {
+      audioNote(125, now, 0.18, { type: 'square', gain: 0.045, cutoff: 420, attack: 0.004 });
+      audioNote(82, now + 0.055, 0.19, { gain: 0.035, cutoff: 240, attack: 0.006 });
+    } else if (kind === 'jump') {
+      audioNote(392, now, 0.12, { gain: 0.035, cutoff: 1800 });
+      audioNote(587.33, now + 0.055, 0.16, { gain: 0.03, cutoff: 2400 });
+    }
+  }
   const WORLD = {
     // Coordinate convention: X is screen-horizontal, Y is screen-vertical, Z is depth.
     // The world generator still stores terrain height in Y; Z supplies the depth projection.
@@ -47,7 +152,6 @@
     projection: { x: 0.72, z: 0.30, y: 0.72, depthSlope: 0.15 }
   };
 
-  const TERRAIN_RENDER_RADIUS = 6000;
   const SOURCE_RATE = 950; // Each spring has abundant natural output; infrastructure is the bottleneck.
   const BASIN_CAPACITY = 4200000;
   const CHANNEL_TYPES = {
@@ -92,7 +196,8 @@
     spawn: { x: WORLD.xMin + 900, z: -260 },
     weather: { phase: 'clear', timeLeft: 720, gust: 0 },
     resourceHighlight: false,
-    player: { x: WORLD.xMin + 900, z: -260, y: 0, vy: 0, grounded: true, facing: 1, walkTime: 0, moving: false, jumpOffset: 0, health: 100, crouching: false },
+    tutorial: { active: false, step: 0 },
+    player: { x: WORLD.xMin + 900, z: -260, y: 0, vy: 0, grounded: true, facing: 1, walkTime: 0, moving: false, jumpOffset: 0, jumpBuffer: 0, health: 100, crouching: false },
     camera: { x: WORLD.xMin + 900, z: -260, y: 80 },
     nodes: {},
     channels: [],
@@ -120,7 +225,7 @@
     tool: 'select',
     channelType: 'iron',
     anchorNodeId: null,
-    pointer: { x: 0, y: 0, inside: false, down: false },
+    pointer: { x: 0, y: 0, inside: false, down: false, mining: false, mineTimer: 0 },
     selectedChannelId: null,
     selectedObject: null,
     network: { route: [], flow: 0, waterMultiplier: 1, fillRate: 0 },
@@ -180,16 +285,22 @@
   // It is global and camera-independent: every point at the same world height
   // gets the same shade, whether it is beside the player or on the far horizon.
   // The endpoints match the supplied height swatch (dark low, vivid high).
+  let terrainGradientBands = null;
+  let terrainGradientCache = null;
   function terrainHeightGradientRange() {
+    if (terrainGradientBands === state.layerBands && terrainGradientCache) return terrainGradientCache;
     // Use the full generated world's elevation range, not the currently visible
     // shelf or the player's local height. Include the small procedural surface
     // variation so the lowest and highest terrain still reach the endpoints.
     const heights = state.layerBands.map(band => band.height);
-    if (!heights.length) return { min: WORLD.terrainBase - 8, max: WORLD.terrainBase + 8 };
-    return {
+    terrainGradientBands = state.layerBands;
+    terrainGradientCache = !heights.length
+      ? { min: WORLD.terrainBase - 8, max: WORLD.terrainBase + 8 }
+      : {
       min: Math.min(...heights) - 8,
       max: Math.max(...heights) + 8
     };
+    return terrainGradientCache;
   }
 
   function terrainGrassColorAtHeight(worldY) {
@@ -574,6 +685,11 @@
     updateHotbar();
     const outputName = Object.keys(outputs).map(outputId => `${ITEM_NAMES[outputId] || outputId}${outputs[outputId] > 1 ? ` ×${outputs[outputId]}` : ''}`).join(', ');
     showToast(`${outputName || recipe.name} crafted.`);
+    if (outputs.furnace) tutorialReact('furnaceCrafted');
+    if (outputs.flattener) tutorialReact('flattenerCrafted');
+    if (outputs.iron || outputs.concrete) tutorialReact('channelsCrafted');
+    if (outputs.waterwheel) tutorialReact('waterwheelCrafted');
+    if (outputs.drill) tutorialReact('drillCrafted');
     return true;
   }
 
@@ -641,12 +757,24 @@
       ['components', 'HAND-CRAFTED COMPONENTS', Object.entries(allHand).filter(([id, recipe]) => !['Devices','Building'].includes(recipe.category))],
       ['machines', 'MACHINES & INFRASTRUCTURE', Object.entries(window.FTSRegistry.machineBuildRecipes)]
     ];
+    const tutorialRecipeIds = tutorialRecipeTargets();
     craft.innerHTML = groups.map(([key, title, entries], index) => {
-      const shouldOpen = state.openRecipeGroups.has(key) || (!state.openRecipeGroups.size && index === 0);
+      const containsTutorialRecipe = state.tutorial.active && entries.some(([id]) => tutorialRecipeIds.includes(id));
+      const shouldOpen = containsTutorialRecipe || state.openRecipeGroups.has(key) || (!state.openRecipeGroups.size && index === 0);
       return `<details class="recipe-group" data-group="${key}"${shouldOpen ? ' open' : ''}><summary>${title} <span>${entries.length}</span></summary>${entries.map(([id, recipe]) => recipeRow(id, recipe)).join('') || '<p class="craft-empty">No recipes in this category.</p>'}</details>`;
     }).join('') +
       `<div class="material-line">Materials: Stone ${state.materials.stone} · Wood ${state.materials.wood} · Iron ${state.materials.ironIngot}<br>Copper Ore ${state.materials.copperOre} · Zinc Ore ${state.materials.zincOre} · Silicon ${state.materials.silicon}<br>Voltite ${state.materials.voltite} · Glass ${state.materials.glassPane} · Wire ${state.materials.wire}</div>`;
     craft.scrollTop = previousCraftScroll;
+    if (state.tutorial.active) {
+      highlightTutorialRecipes();
+      const targetRecipe = craft.querySelector('.tutorial-recipe-target');
+      if (targetRecipe) {
+        const craftRect = craft.getBoundingClientRect(), recipeRect = targetRecipe.getBoundingClientRect();
+        if (recipeRect.top < craftRect.top || recipeRect.bottom > craftRect.bottom) {
+          craft.scrollTop += recipeRect.top - craftRect.top - (craftRect.height - recipeRect.height) / 2;
+        }
+      }
+    }
     updateHotbar();
   }
 
@@ -666,7 +794,7 @@
     const tools = {
       compass: 'compass', stonePickaxe: 'pickaxe', stoneAxe: 'axe', woodPole: 'woodPole',
       pump: 'pump', remoteDisplay: 'remote', chute: 'chute', hygrometer: 'hygrometer',
-      iron: 'channel', concrete: 'channel', glass: 'channel', x4: 'module', x2: 'module',
+      iron: 'channel', concrete: 'channel', glass: 'channel', brass: 'channel', x4: 'module', x2: 'module',
       conveyorBelt: 'belt', shaft: 'shaftLink', tungstenShaft: 'moltenLink', mainsCable: 'powerLink'
     };
     const itemDef = window.FTSRegistry.items[id];
@@ -683,9 +811,10 @@
       setTool('powerLink');
     } else {
       state.machineToPlace = null;
-      setTool(tools[id] || 'select', ['iron', 'concrete', 'glass'].includes(id) ? id : null);
+      setTool(tools[id] || 'select', ['iron', 'concrete', 'glass', 'brass'].includes(id) ? id : null, !id);
     }
     updateHotbar();
+    if (state.tutorial?.active) positionTutorialArrow();
   }
 
   function bindInventoryEvents() {
@@ -911,6 +1040,7 @@
     state.player.z = state.spawn.z;
     state.player.y = terrainHeight(state.player.x, state.player.z);
     state.player.vy = 0; state.player.jumpOffset = 0; state.player.grounded = true;
+    state.player.jumpBuffer = 0;
     state.player.walkTime = 0; state.player.health = 100; state.player.crouching = false; state.player.sheltered = false;
     state.player.moving = false;
     state.camera.x = state.player.x; state.camera.z = state.player.z; state.camera.y = state.player.y;
@@ -963,18 +1093,11 @@ function drawTerrain() {
     ctx.fillStyle = COLORS.grass;
     ctx.fillRect(0, 0, W, H);
 
-    // Render a circular patch around the player.
-    // Large enough to cover the visible viewport.
-    const TERRAIN_RENDER_RADIUS = 6000;
-    const radiusSq = TERRAIN_RENDER_RADIUS * TERRAIN_RENDER_RADIUS;
-
-    const px = state.player.x;
-    const pz = state.player.z;
-
-    const xStart = Math.max(WORLD.xMin, px - TERRAIN_RENDER_RADIUS);
-    const xEnd = Math.min(WORLD.xMax, px + TERRAIN_RENDER_RADIUS);
-    const zStart = Math.max(WORLD.zMin, pz - TERRAIN_RENDER_RADIUS);
-    const zEnd = Math.min(WORLD.zMax, pz + TERRAIN_RENDER_RADIUS);
+    // Sample the visible world on a fixed world-space grid. A player-relative
+    // grid makes terrain features slide as each frame chooses new sample points.
+    const bounds = terrainViewportBounds();
+    const xStart = bounds.xStart, xEnd = bounds.xEnd;
+    const zStart = bounds.zStart, zEnd = bounds.zEnd;
 
     const xs = [];
     const zs = [];
@@ -989,14 +1112,7 @@ function drawTerrain() {
     }
     if (zs[zs.length - 1] < zEnd) zs.push(zEnd);
 
-    // Cache terrain heights. Outside the circular render radius is skipped.
-    const h = xs.map(x => zs.map(z => {
-        const dx = x - px;
-        const dz = z - pz;
-
-        if (dx * dx + dz * dz > radiusSq) return null;
-        return terrainHeight(x, z);
-    }));
+    const h = xs.map(x => zs.map(z => terrainHeight(x, z)));
 
     const validCell = (i, j) =>
         h[i][j] !== null &&
@@ -1096,12 +1212,12 @@ function drawTerrain() {
                 (x0 + x1) / 2,
                 (z0 + z1) / 2
             );
+            // The Empty Sea is rendered as one continuous sand-and-water shape
+            // after the terrain pass. Don't draw tiled terrain beneath that overlay.
+            if (r < 0.99) continue;
 
             const yMid = cellAverage(i, j);
-            let fill = terrainGrassColorAtHeight(yMid);
-
-            if (r < 0.61) fill = '#123f9b';
-            else if (r < 0.99) fill = COLORS.sand;
+            const fill = terrainGrassColorAtHeight(yMid);
 
             const pts = [
                 project(x0, h[i][j], z0),
@@ -1215,7 +1331,9 @@ function drawTerrain() {
   function drawBasin() {
     const b = state.basin;
     const outerY = b.rimY;
-    worldEllipse(b.x, b.z, b.rx, b.rz, outerY, COLORS.sand, COLORS.sandEdge, 6);
+    // Extend the top sand cap slightly beyond the terrain mask so no bright
+    // grass wedges can show through between the world-space mesh cells.
+    worldEllipse(b.x, b.z, b.rx * 1.08, b.rz * 1.08, outerY, COLORS.sand, COLORS.sandEdge, 6);
     worldEllipse(b.x, b.z, b.rx * 0.64, b.rz * 0.64, b.floorY, '#0a3b91', COLORS.waterEdge, 6);
     const progress = clamp(b.water / BASIN_CAPACITY, 0, 1);
     const scale = 0.18 + 0.82 * Math.sqrt(progress);
@@ -1877,13 +1995,14 @@ function drawTerrain() {
     state.selectedObject = { type: 'channel', id: state.selectedChannelId };
     renderInspection();
     showToast(`${CHANNEL_TYPES[state.channelType].name} connected · ${cost}x used.`);
+    tutorialReact('channelsPlaced');
     updateUI(true);
   }
 
-  function setTool(tool, typeId = null) {
+  function setTool(tool, typeId = null, preserveHotbarSelection = false) {
     state.tool = tool;
     if (typeId) state.channelType = typeId;
-    if (tool === 'select') { state.selectedHotbar = -1; state.heldItem = null; }
+    if (tool === 'select') { if (!preserveHotbarSelection) state.selectedHotbar = -1; state.heldItem = null; }
     if (tool !== 'channel') state.anchorNodeId = null;
     if (tool !== 'remote') closeInspection();
     state.industryUI?.close();
@@ -1916,6 +2035,236 @@ function drawTerrain() {
     ui.toast.textContent = message;
     ui.toast.classList.add('show');
     state.toastTimer = 2.6;
+  }
+
+  const TUTORIAL_STEPS = [
+    ['Explore the shore', 'Move with WASD or the arrow keys. Hold a direction and press Space to jump while moving. The Empty Sea is the large sand-and-water basin nearby.'],
+    ['Gather the basics', 'Select the Stone Pickaxe (hotbar 1), then hold the left mouse button over stone or a mineral deposit. The yellow arrow points to the nearest Stone deposit. The Stone Axe (hotbar 2) gathers wood.'],
+    ['Craft shafts and a Furnace', 'Open Tab and follow the highlighted recipe. Craft a Shaft from 2 Stone, then a Furnace from 8 Stone, 1 Shaft, and 3 Wood.'],
+    ['Place the Furnace', 'Select the Furnace in your hotbar, then click a clear patch of ground.'],
+    ['Load the Furnace', 'Click the Furnace to open it. Put Iron Ore in its input, then let it smelt automatically.'],
+    ['Collect Iron Ingots', 'When smelting finishes, collect the Iron Ingots from the Furnace output.'],
+    ['Craft a Flattener', 'Follow the highlighted recipe: craft an Iron Flattener part from 4 Iron Ingots and 1 Shaft, then the Flattener machine from that part, 2 more Iron Ingots, and 1 Shaft.'],
+    ['Place the Flattener', 'Select the Flattener in your hotbar and click a clear patch of ground.'],
+    ['Press Iron Plates', 'Open the Flattener. Add an Iron Ingot, choose Press Iron Plate, then collect the finished plate. One plate crafts 25 Iron Channels.'],
+    ['Craft Channels', 'Follow the highlighted Iron Channel recipe. Craft enough to cover the previewed route cost. A Crusher can make Concrete Channels from Stone Powder instead.'],
+    ['Build a water route', 'Select Iron Channel, click a spring, then click or drag to the Empty Sea to connect the water source.'],
+    ['Craft a Waterwheel', 'Follow the highlighted recipe to craft a Waterwheel from 2 Shafts, 6 Wood, and 4 Stone.'],
+    ['Place the Waterwheel', 'Select the Waterwheel in your hotbar and place it over one of your flowing channels.'],
+    ['Craft a Drill', 'Follow the highlighted recipes to make 6 Polished Stone, a Drill Bit, then a Drill from the bit, polished stone, and a Shaft.'],
+    ['Place the Drill', 'Select the Drill in your hotbar and place it directly on a mineral deposit.'],
+    ['Power the Drill', 'Select a Shaft from your hotbar. Click the Waterwheel, then the Drill to connect them. The Drill needs flowing water and a mechanical link.'],
+    ['Prepare for weather', 'Craft Wood Poles and place four to build a shelter. Stand close and press E to crouch inside during a storm.']
+  ];
+  function tutorialRecipeTargets() {
+    if (!state.tutorial.active) return [];
+    switch (state.tutorial.step) {
+      case 2: return itemCount('shaft') > 0 ? ['furnace'] : ['shaft'];
+      case 6: return itemCount('ironFlattener') > 0 ? ['flattener'] : ['ironFlattener'];
+      case 9: return ['iron'];
+      case 11: return ['waterwheel'];
+      case 13:
+        if (itemCount('polishedStone') < 6) return ['polishedStone'];
+        return itemCount('drillBit') > 0 ? ['drill'] : ['drillBit'];
+      case 16: return ['woodPole'];
+      default: return [];
+    }
+  }
+  function nearestTutorialDeposit() {
+    const candidates = [];
+    if (state.tutorial.step === 1) {
+      for (const deposit of state.stoneDeposits) if (deposit.remaining > 0) candidates.push({ ...deposit, kind: 'Stone' });
+    } else if (state.tutorial.step === 14) {
+      for (const deposit of state.stoneDeposits) if (deposit.remaining > 0 && !deposit.drillId) candidates.push({ ...deposit, kind: 'Stone' });
+      for (const deposit of state.ironDeposits) if (deposit.remaining > 0 && !deposit.drillId) candidates.push({ ...deposit, kind: 'Iron' });
+      for (const [kind, deposits] of Object.entries(state.specialDeposits || {})) {
+        for (const deposit of deposits) if (deposit.remaining > 0 && !deposit.drillId) candidates.push({ ...deposit, kind: kind[0].toUpperCase() + kind.slice(1) });
+      }
+    }
+    if (!candidates.length) {
+      for (const deposit of state.stoneDeposits) if (deposit.remaining > 0) candidates.push({ ...deposit, kind: 'Stone' });
+      for (const deposit of state.ironDeposits) if (deposit.remaining > 0 && !deposit.drillId) candidates.push({ ...deposit, kind: 'Iron' });
+      for (const [kind, deposits] of Object.entries(state.specialDeposits || {})) {
+        for (const deposit of deposits) if (deposit.remaining > 0 && !deposit.drillId) candidates.push({ ...deposit, kind: kind[0].toUpperCase() + kind.slice(1) });
+      }
+    }
+    return candidates.reduce((nearest, candidate) => !nearest || worldDistance(state.player, candidate) < worldDistance(state.player, nearest) ? candidate : nearest, null);
+  }
+  function highlightTutorialRecipes() {
+    const targets = new Set();
+    const recipeIds = tutorialRecipeTargets();
+    for (const id of recipeIds) {
+      const button = document.querySelector(`#crafting-recipes [data-craft="${id}"]`);
+      const row = button?.closest('.craft-recipe');
+      if (row) targets.add(row);
+    }
+    const industry = document.getElementById('industry-inspector');
+    if (state.tutorial.active && industry && state.tutorial.step === 4 && state.industryEngine?.getMachine(state.industryUI?.currentId)?.kind === 'furnace') {
+      const input = industry.querySelector('[data-machine-input]');
+      if (input) targets.add(input);
+    }
+    const inspectedMachine = state.industryEngine?.getMachine(state.industryUI?.currentId);
+    if (state.tutorial.active && industry && state.tutorial.step === 8 && inspectedMachine?.kind === 'flattener') {
+      if (inspectedMachine.recipeId !== 'press-iron-plate') {
+        const recipe = industry.querySelector('[data-machine-recipe="press-iron-plate"]');
+        if (recipe) targets.add(recipe);
+      } else if ((inspectedMachine.input?.ironIngot || 0) === 0) {
+        const input = industry.querySelector('[data-action="insert"][data-item="ironIngot"]');
+        if (input) targets.add(input);
+      } else if ((inspectedMachine.output?.ironPlate || 0) > 0) {
+        const collect = industry.querySelector('[data-action="take-all"]') || industry.querySelector('[data-action="take"][data-item="ironPlate"]');
+        if (collect) targets.add(collect);
+      } else if ((inspectedMachine.input?.ironIngot || 0) > 0) {
+        const progress = industry.querySelector('.industry-progress');
+        if (progress) targets.add(progress);
+      }
+    }
+    document.querySelectorAll('.tutorial-recipe-target').forEach(element => {
+      if (!targets.has(element)) element.classList.remove('tutorial-recipe-target');
+    });
+    targets.forEach(element => element.classList.add('tutorial-recipe-target'));
+  }
+  function renderTutorial() {
+    const panel = document.getElementById('tutorial-panel');
+    if (!panel) return;
+    const step = TUTORIAL_STEPS[state.tutorial.step];
+    panel.hidden = !state.tutorial.active;
+    if (!step) return;
+    document.getElementById('tutorial-progress').textContent = `FIELD GUIDE · ${state.tutorial.step + 1} / ${TUTORIAL_STEPS.length}`;
+    document.getElementById('tutorial-title').textContent = step[0];
+    document.getElementById('tutorial-copy').textContent = step[1];
+    document.getElementById('tutorial-back').disabled = state.tutorial.step === 0;
+    document.getElementById('tutorial-next').textContent = state.tutorial.step === TUTORIAL_STEPS.length - 1 ? 'Finish' : 'Next';
+    positionTutorialArrow();
+  }
+  function positionTutorialArrow() {
+    const arrow = document.getElementById('tutorial-arrow');
+    const frame = document.getElementById('game-frame');
+    if (!arrow || !frame) return;
+    if (!state.tutorial.active) { highlightTutorialRecipes(); arrow.hidden = true; return; }
+    highlightTutorialRecipes();
+    const targetIds = ['#game', '#game', '#inventory-tab', '#hotbar-bar', '#game', '#game', '#inventory-tab', '#hotbar-bar', '#game', '#inventory-tab', '#game', '#inventory-tab', '#hotbar-bar', '#inventory-tab', '#hotbar-bar', '#hotbar-bar', '#inventory-tab'];
+    const recipeIds = tutorialRecipeTargets();
+    const selectedItem = state.hotbar[state.selectedHotbar];
+    if ((state.tutorial.step === 3 && selectedItem === 'furnace')
+      || (state.tutorial.step === 7 && selectedItem === 'flattener')
+      || (state.tutorial.step === 12 && selectedItem === 'waterwheel')
+      || (state.tutorial.step === 14 && selectedItem === 'drill')) targetIds[state.tutorial.step] = '#game';
+    if (state.tutorial.step === 15 && state.tool === 'shaftLink') targetIds[15] = '#game';
+    let target = null;
+    if (state.inventoryOpen && recipeIds.length) {
+      target = document.querySelector(`#crafting-recipes [data-craft="${recipeIds[0]}"]`)?.closest('.craft-recipe') || null;
+    }
+    const worldActionSteps = [3, 4, 5, 7, 10, 12, 14, 15];
+    if (!target && state.inventoryOpen && worldActionSteps.includes(state.tutorial.step)) target = document.getElementById('inventory-close');
+    if (!target && state.tutorial.step === 4 && state.industryEngine?.getMachine(state.industryUI?.currentId)?.kind === 'furnace') target = document.querySelector('#industry-inspector [data-machine-input]');
+    if (!target && state.tutorial.step === 5 && state.industryUI?.currentId) target = document.querySelector('#industry-inspector [data-action="take-all"]');
+    if (!target && state.tutorial.step === 8 && state.industryEngine?.getMachine(state.industryUI?.currentId)?.kind === 'flattener') {
+      const machine = state.industryEngine.getMachine(state.industryUI.currentId);
+      if (machine.recipeId !== 'press-iron-plate') target = document.querySelector('#industry-inspector [data-machine-recipe="press-iron-plate"]');
+      else if ((machine.input?.ironIngot || 0) === 0) target = document.querySelector('#industry-inspector [data-action="insert"][data-item="ironIngot"]');
+      else if ((machine.output?.ironPlate || 0) > 0) target = document.querySelector('#industry-inspector [data-action="take-all"], #industry-inspector [data-action="take"][data-item="ironPlate"]');
+      else if ((machine.input?.ironIngot || 0) > 0) target = document.querySelector('#industry-inspector .industry-progress');
+    }
+    if (!target) target = document.querySelector(targetIds[state.tutorial.step]) || document.getElementById('tutorial-panel');
+    const frameRect = frame.getBoundingClientRect();
+    if (!target) return;
+    const arrowGlyph = arrow.querySelector('b');
+    const label = arrow.querySelector('[data-tutorial-arrow-label]');
+    arrow.classList.remove('tutorial-arrow-directional');
+    let rotation = 90;
+    let markerX, markerY, labelText = 'TRY THIS';
+    let x, y;
+    if (target.id === 'game') {
+      const canvasRect = canvas.getBoundingClientRect();
+      let worldTarget = state.player;
+      let targetHeight = 8;
+      const depositTarget = [1, 14].includes(state.tutorial.step) ? nearestTutorialDeposit() : null;
+      if (depositTarget) { worldTarget = depositTarget; labelText = `GO TO ${depositTarget.kind.toUpperCase()} · ${Math.round(worldDistance(state.player, depositTarget))} AWAY`; }
+      if (state.tutorial.step === 10) {
+        worldTarget = state.anchorNodeId ? state.basin : state.sources[0] || state.player;
+        labelText = state.anchorNodeId ? 'CONNECT TO EMPTY SEA' : 'START AT WATER SOURCE';
+      }
+      if (state.tutorial.step === 12 && state.channels.length) {
+        const channel = state.channels[0], a = state.nodes[channel.a], b = state.nodes[channel.b];
+        if (a && b) worldTarget = { x: (a.x + b.x) / 2, z: (a.z + b.z) / 2 };
+      }
+      if ([4, 5].includes(state.tutorial.step)) {
+        worldTarget = state.industryEngine?.machines.find(machine => machine.kind === 'furnace') || state.player;
+        targetHeight = 60;
+      }
+      if (state.tutorial.step === 8) {
+        worldTarget = state.industryEngine?.machines.find(machine => machine.kind === 'flattener') || state.player;
+        targetHeight = 50;
+      }
+      if (state.tutorial.step === 15) {
+        const firstEndpoint = state.industryEngine?.getMachine(state.industryLinkStart);
+        const nextKind = firstEndpoint?.kind === 'waterwheel' ? 'drill' : 'waterwheel';
+        worldTarget = state.industryEngine?.machines.find(machine => machine.kind === nextKind) || state.player;
+        targetHeight = 60;
+      }
+      const playerPoint = project(state.player.x, terrainHeight(state.player.x, state.player.z) + state.player.jumpOffset, state.player.z);
+      const targetPoint = project(worldTarget.x, terrainHeight(worldTarget.x, worldTarget.z) + (worldTarget === state.player ? state.player.jumpOffset : targetHeight), worldTarget.z);
+      const playerX = playerPoint.x / W * canvasRect.width, playerY = playerPoint.y / H * canvasRect.height;
+      const targetX = targetPoint.x / W * canvasRect.width, targetY = targetPoint.y / H * canvasRect.height;
+      const insetX = Math.min(82, canvasRect.width * 0.24), insetY = 52;
+      const maxX = canvasRect.width - insetX, maxY = canvasRect.height - insetY;
+      const onScreen = targetX >= insetX && targetX <= maxX && targetY >= insetY && targetY <= maxY;
+      let directionX = targetX - playerX, directionY = targetY - playerY;
+      if (onScreen) {
+        markerX = targetX;
+        markerY = targetY - 28;
+        directionX = 0; directionY = 1;
+      } else {
+        const edgeScaleX = directionX > 0 ? (maxX - playerX) / directionX : directionX < 0 ? (insetX - playerX) / directionX : Infinity;
+        const edgeScaleY = directionY > 0 ? (maxY - playerY) / directionY : directionY < 0 ? (insetY - playerY) / directionY : Infinity;
+        const scale = Math.max(0, Math.min(edgeScaleX, edgeScaleY));
+        markerX = playerX + directionX * scale;
+        markerY = playerY + directionY * scale;
+        if (depositTarget) labelText = `${depositTarget.kind.toUpperCase()} · ${Math.round(worldDistance(state.player, depositTarget))} AWAY`;
+        else if (labelText === 'TRY THIS') labelText = 'TARGET OFFSCREEN';
+      }
+      x = canvasRect.left - frameRect.left + markerX;
+      y = canvasRect.top - frameRect.top + markerY;
+      rotation = Math.atan2(directionY, directionX) * 180 / Math.PI;
+      arrow.classList.add('tutorial-arrow-directional');
+    } else {
+      const rect = target.getBoundingClientRect();
+      x = rect.left - frameRect.left + rect.width / 2;
+      y = rect.top - frameRect.top;
+      labelText = target.id === 'inventory-close' ? 'CLOSE INVENTORY'
+        : target.matches('.craft-recipe') ? 'CRAFT THIS'
+          : target.matches('[data-machine-recipe]') ? 'SELECT RECIPE'
+            : target.matches('[data-machine-input]') ? 'ADD IRON ORE'
+              : target.matches('[data-action="insert"]') ? 'ADD IRON INGOT'
+                : target.matches('[data-action="take-all"], [data-action="take"]') ? 'COLLECT PLATE'
+                  : target.matches('.industry-progress') ? 'WAIT FOR OUTPUT' : 'TRY THIS';
+    }
+    if (arrowGlyph) arrowGlyph.style.transform = `rotate(${rotation}deg)`;
+    if (label) label.textContent = labelText;
+    arrow.hidden = false;
+    const markerHalfWidth = Math.max(34, arrow.offsetWidth / 2);
+    arrow.style.left = `${clamp(x - markerHalfWidth, 4, frameRect.width - arrow.offsetWidth - 4)}px`;
+    arrow.style.top = `${clamp(y - arrow.offsetHeight - 3, 4, frameRect.height - arrow.offsetHeight - 4)}px`;
+  }
+  function openTutorial() { state.tutorial.active = true; renderTutorial(); }
+  function closeTutorial() { state.tutorial.active = false; renderTutorial(); }
+  function tutorialReact(action) {
+    const expected = {
+      move: 0, gather: 1, furnaceCrafted: 2, furnacePlaced: 3,
+      furnaceLoaded: 4, furnaceCollected: 5, flattenerCrafted: 6,
+      flattenerPlaced: 7, plateCollected: 8,
+      channelsCrafted: 9, channelsPlaced: 10, waterwheelCrafted: 11,
+      waterwheelPlaced: 12, drillCrafted: 13, drillPlaced: 14,
+      drillConnected: 15, shelterBuilt: 16
+    }[action];
+    if (state.tutorial.active && state.tutorial.step === expected) advanceTutorial(1);
+  }
+  function advanceTutorial(direction) {
+    const next = state.tutorial.step + direction;
+    if (next >= TUTORIAL_STEPS.length) { closeTutorial(); return; }
+    state.tutorial.step = clamp(next, 0, TUTORIAL_STEPS.length - 1);
+    renderTutorial();
   }
 
   function closeInspection() {
@@ -2352,6 +2701,8 @@ function drawTerrain() {
     // Do not consume deposit stock if the 36 inventory slots cannot accept the item.
     if (!giveItem(item, mined)) { showToast('Inventory full · make room before mining more.'); return; }
     deposit.remaining -= mined;
+    playSoundEffect('mine');
+    tutorialReact('gather');
     const remaining = deposit.remaining;
     if (remaining <= 0) {
       const attachedDrill = state.industryEngine?.machines.find(machine => machine.kind === 'drill' && machine.depositId === deposit.id);
@@ -2359,6 +2710,19 @@ function drawTerrain() {
     }
     showToast(`Mined ${mined} ${ITEM_NAMES[item] || item} · ${remaining} remaining in ${type} deposit.`);
     updateUI(true); renderInventoryIfOpen();
+  }
+
+  function updateHeldMining(dt) {
+    const pointer = state.pointer;
+    if (!pointer.down || !pointer.mining || state.inventoryOpen) return;
+    if (state.tool !== 'pickaxe') { pointer.mining = false; return; }
+    const hit = findAnyMineableDepositHit(pointer.x, pointer.y);
+    if (!hit) { pointer.mining = false; return; }
+    pointer.mineTimer -= dt;
+    if (pointer.mineTimer <= 0) {
+      mineStone(pointer.x, pointer.y);
+      pointer.mineTimer = hit.deposit.drillId ? 0.25 : 0.5;
+    }
   }
 
   function renderInventoryIfOpen() { if (state.inventoryOpen) renderInventory(); }
@@ -2369,6 +2733,8 @@ function drawTerrain() {
     if (worldDistance(state.player, tree) > 155) { showToast('Move closer to the tree.'); return; }
     const cut = Math.min(3, tree.wood);
     tree.wood -= cut;
+    playSoundEffect('chop');
+    tutorialReact('gather');
     state.materials.wood += cut;
     if (Math.random() < 0.42) state.materials.treeSap += 1;
     addItemToBag('wood');
@@ -2407,6 +2773,7 @@ function drawTerrain() {
     else if (shelter.poles === 3) showToast('One side support placed. add the final side support.');
     if (shelter.poles === 4) {
       shelter.complete = true;
+      tutorialReact('shelterBuilt');
       showToast('Shelter complete! Go close to it and click it to crouch underneath during storms.');
     }
     updateUI(true);
@@ -2507,14 +2874,17 @@ function drawTerrain() {
         const acceptedByRecipe = !!recipe && Object.prototype.hasOwnProperty.call(recipe.inputs || {}, itemId);
         if (acceptedByFurnace || acceptedByRecipe) inserted = !!state.industryEngine?.insert(machine.id, itemId, 1);
       }
-      if (inserted) { showToast(`Inserted 1 ${ITEM_NAMES[itemId] || itemId}.`); updateHotbar(); renderInventoryIfOpen(); state.industryUI?.open(machine.id); }
+      if (inserted) {
+        if (machine.kind === 'furnace' && itemId === 'ironOre') tutorialReact('furnaceLoaded');
+        showToast(`Inserted 1 ${ITEM_NAMES[itemId] || itemId}.`); updateHotbar(); renderInventoryIfOpen(); state.industryUI?.open(machine.id);
+      }
       else showToast('That part is not an input for this machine or its selected recipe.');
       return;
     }
     const rect = canvas.getBoundingClientRect();
     const mx = (event.clientX - rect.left) * W / rect.width;
     const my = (event.clientY - rect.top) * H / rect.height;
-    state.pointer = { x: mx, y: my, inside: true, down: true };
+    state.pointer = { ...state.pointer, x: mx, y: my, inside: true, down: true, mining: false, mineTimer: 0.5 };
 
     if (state.tool === 'machine') {
       const world = screenToWorld(mx, my);
@@ -2530,6 +2900,10 @@ function drawTerrain() {
       const result = state.industryEngine?.placeMachine(state.machineToPlace, world.x, world.z, placementOptions);
       if (result?.ok) {
         if (result.machine.kind === 'drill') setDepositDrillId(result.machine.depositId, result.machine.id);
+        if (result.machine.kind === 'furnace') tutorialReact('furnacePlaced');
+        if (result.machine.kind === 'flattener') tutorialReact('flattenerPlaced');
+        if (result.machine.kind === 'waterwheel') tutorialReact('waterwheelPlaced');
+        if (result.machine.kind === 'drill') tutorialReact('drillPlaced');
         renderInventoryIfOpen(); updateHotbar();
       } else if (result?.reason) showToast(result.reason);
       return;
@@ -2548,13 +2922,21 @@ function drawTerrain() {
         showToast('First endpoint selected. Click the second machine.');
       } else {
         const linkTool = state.tool;
+        const firstMachineId = state.industryLinkStart;
         const result = linkTool === 'shaftLink'
           ? state.industryEngine?.connectShaft(state.industryLinkStart, hit.id, 'shaft')
           : linkTool === 'moltenLink'
             ? state.industryEngine?.connectMolten(state.industryLinkStart, hit.id)
             : state.industryEngine?.connectPower(state.industryLinkStart, hit.id);
         state.industryLinkStart = null;
-        if (result?.ok) showToast(linkTool === 'shaftLink' ? 'Mechanical shaft connected.' : linkTool === 'moltenLink' ? 'Tungsten molten-metal feed connected.' : 'Mains cable connected.');
+        if (result?.ok) {
+          if (linkTool === 'shaftLink') {
+            const first = state.industryEngine?.getMachine(firstMachineId);
+            const second = state.industryEngine?.getMachine(hit.id);
+            if ([first?.kind, second?.kind].includes('drill') && [first?.kind, second?.kind].includes('waterwheel')) tutorialReact('drillConnected');
+          }
+          showToast(linkTool === 'shaftLink' ? 'Mechanical shaft connected.' : linkTool === 'moltenLink' ? 'Tungsten molten-metal feed connected.' : 'Mains cable connected.');
+        }
         else if (result?.reason) showToast(result.reason);
       }
       updateHotbar();
@@ -2567,6 +2949,8 @@ function drawTerrain() {
       if (machineHit) {
         const collected = state.industryEngine?.collectAllOutput(machineHit.id);
         if (collected?.total > 0) {
+          if (machineHit.kind === 'furnace' && collected.items.ironIngot) tutorialReact('furnaceCollected');
+          if (machineHit.kind === 'flattener' && collected.items.ironPlate) tutorialReact('plateCollected');
           const summary = Object.entries(collected.items).map(([id, amount]) =>
             `${amount} ${ITEM_NAMES[id] || window.FTSRegistry.items[id]?.name || id}`).join(', ');
           showToast(`Collected ${summary}.${collected.blocked ? ' Inventory full; some items remain.' : ''}`);
@@ -2626,7 +3010,7 @@ function drawTerrain() {
     const rect = canvas.getBoundingClientRect();
     const mx = (event.clientX - rect.left) * W / rect.width;
     const my = (event.clientY - rect.top) * H / rect.height;
-    state.pointer = { x: mx, y: my, inside: true, down: false };
+    state.pointer = { ...state.pointer, x: mx, y: my, inside: true, down: false, mining: false };
     if (state.inventoryOpen) return;
     if (state.tool === 'channel' && state.anchorNodeId) {
       const candidate = findChannelEndpointCandidate(mx, my);
@@ -2658,6 +3042,7 @@ function drawTerrain() {
   function handlePointerMove(event) {
     const rect = canvas.getBoundingClientRect();
     state.pointer = {
+      ...state.pointer,
       x: (event.clientX - rect.left) * W / rect.width,
       y: (event.clientY - rect.top) * H / rect.height,
       inside: true, down: state.pointer.down
@@ -2666,13 +3051,18 @@ function drawTerrain() {
 
   function jump() {
     const p = state.player;
-    if (!p.grounded) return;
+    p.jumpBuffer = 0.18;
+    if (!p.grounded) return false;
+    p.jumpBuffer = 0;
     p.vy = 500; p.grounded = false;
+    playSoundEffect('jump');
+    return true;
   }
 
   function updatePlayer(dt) {
     if (state.inventoryOpen) { keys.clear(); return; }
     const p = state.player;
+    p.jumpBuffer = Math.max(0, p.jumpBuffer - dt);
     let screenMoveX = 0, screenMoveY = 0;
     // Input follows the visible screen plane rather than the oblique world axes.
     // A/D moves left-right. W/S moves up-down on the projected ground plane.
@@ -2681,6 +3071,7 @@ function drawTerrain() {
     if (keys.has('w') || keys.has('arrowup')) screenMoveY -= 1;
     if (keys.has('s') || keys.has('arrowdown')) screenMoveY += 1;
     const inputLength = Math.hypot(screenMoveX, screenMoveY);
+    if (inputLength > 0) tutorialReact('move');
     if (inputLength > 0) { screenMoveX /= inputLength; screenMoveY /= inputLength; }
 
     let screenSpeed = (p.crouching ? 92 : 250) * WORLD.projection.x;
@@ -2701,6 +3092,17 @@ function drawTerrain() {
       const oldGround = terrainHeight(p.x, p.z);
       const oldFootY = oldGround + p.jumpOffset;
       const newGround = terrainHeight(x, z);
+      const moveDistance = Math.hypot(x - p.x, z - p.z);
+      // Permit gradual slopes such as the Empty Sea's shoreline while still
+      // rejecting near-vertical elevation shelves. Airborne movement keeps the
+      // stricter foot-height check so jumping remains necessary for cliffs.
+      const walkableSlope = 1.5 + moveDistance * 0.75;
+      const groundDelta = newGround - oldGround;
+      if (p.grounded && Math.abs(groundDelta) <= walkableSlope) {
+        p.x = x; p.z = z; p.y = newGround;
+        p.jumpOffset = 0; p.vy = 0; p.grounded = true;
+        return true;
+      }
       if (newGround > oldFootY + 1.5) return false;
 
       const newOffset = Math.max(0, oldFootY - newGround);
@@ -2729,18 +3131,24 @@ function drawTerrain() {
     p.facing = screenMoveX === 0 ? p.facing : Math.sign(screenMoveX);
     p.moving = inputLength > 0 && (Math.abs(stepX) + Math.abs(stepZ) > 0);
     if (p.moving && p.grounded) p.walkTime += dt;
+    if (p.moving && p.grounded) {
+      sound.footstepTimer -= dt;
+      if (sound.footstepTimer <= 0) { playSoundEffect('step'); sound.footstepTimer = 0.38; }
+    } else sound.footstepTimer = 0;
     if (!p.grounded) {
       p.vy -= 850 * dt;
       p.jumpOffset += p.vy * dt;
       if (p.jumpOffset <= 0) { p.jumpOffset = 0; p.vy = 0; p.grounded = true; }
     }
-    state.camera.x = lerp(state.camera.x, p.x, 1 - Math.exp(-5 * dt));
-    state.camera.z = lerp(state.camera.z, p.z, 1 - Math.exp(-5 * dt));
-    state.camera.y = lerp(state.camera.y, p.y, 1 - Math.exp(-4 * dt));
+    if (p.grounded && (p.jumpBuffer > 0 || keys.has(' '))) jump();
+    state.camera.x = lerp(state.camera.x, p.x, 1 - Math.exp(-12 * dt));
+    state.camera.z = lerp(state.camera.z, p.z, 1 - Math.exp(-12 * dt));
+    state.camera.y = lerp(state.camera.y, p.y, 1 - Math.exp(-12 * dt));
   }
 
   function update(dt) {
     if (dt <= 0) return;
+    updateHeldMining(dt);
     updatePlayer(dt);
     updateSimulation(dt);
     updateWeather(dt);
@@ -2750,7 +3158,12 @@ function drawTerrain() {
       if (state.toastTimer <= 0) ui.toast.classList.remove('show');
     }
     state.uiTimer += dt;
-    if (state.uiTimer >= 0.18) { state.uiTimer = 0; updateUI(false); if (state.industryUI?.currentId) state.industryUI.render(); }
+    if (state.uiTimer >= 0.18) {
+      state.uiTimer = 0;
+      updateUI(false);
+      if (state.industryUI?.currentId) state.industryUI.render();
+      if (state.tutorial.active) positionTutorialArrow();
+    }
   }
 
   function frame(timestamp) {
@@ -2762,13 +3175,21 @@ function drawTerrain() {
   }
 
   function initializeIndustry() {
-    window.FTSAssets.preloadAll();
     const adapter = {
       getItemCount: id => itemCount(id),
       consumeItem: (id, amount) => consumeItem(id, amount),
       addItem: (id, amount) => giveItem(id, amount),
-      onToast: message => showToast(message),
-      onChange: () => { updateHotbar(); renderInventoryIfOpen(); },
+      onToast: message => {
+        const machine = state.industryEngine?.getMachine(state.industryUI?.currentId);
+        if (/^Collected /.test(message) && machine?.kind === 'furnace' && /Iron Ingot/.test(message)) tutorialReact('furnaceCollected');
+        if (/^Collected /.test(message) && machine?.kind === 'flattener' && /Iron Plate/.test(message)) tutorialReact('plateCollected');
+        showToast(message);
+      },
+      onChange: () => {
+        updateHotbar(); renderInventoryIfOpen();
+        const machine = state.industryEngine?.getMachine(state.industryUI?.currentId);
+        if (machine?.kind === 'furnace' && (machine.input?.ironOre || 0) > 0) tutorialReact('furnaceLoaded');
+      },
       terrainHeight: (x, z) => terrainHeight(x, z),
       getChannelFlow: channelId => state.channels.find(channel => channel.id === channelId)?.currentFlow || 0,
       findChannelAt: (x, z) => {
@@ -2850,6 +3271,22 @@ function drawTerrain() {
     const element = document.getElementById(id);
     if (element) element.addEventListener('click', callback);
   }
+  bindButton('start-game', () => {
+    if (!sound.preferenceChosen) setSoundEnabled(true);
+    playUiChime();
+    document.getElementById('title-screen')?.classList.add('closed');
+    showToast('You have stone tools. Press H or use the button to highlight resources.');
+    openTutorial();
+    state.lastTime = 0;
+    requestAnimationFrame(frame);
+  });
+  bindButton('audio-toggle', () => { sound.preferenceChosen = true; setSoundEnabled(!sound.enabled); });
+  bindButton('sound-control', () => { sound.preferenceChosen = true; setSoundEnabled(!sound.enabled); });
+  bindButton('tutorial-toggle', () => state.tutorial.active ? closeTutorial() : openTutorial());
+  bindButton('tutorial-close', closeTutorial);
+  bindButton('tutorial-skip', closeTutorial);
+  bindButton('tutorial-back', () => advanceTutorial(-1));
+  bindButton('tutorial-next', () => advanceTutorial(1));
   bindButton('regenerate', () => generateTerrain());
   bindButton('resource-highlight', () => toggleResourceHighlights());
   bindButton('close-inspection', closeInspection);
@@ -2884,10 +3321,14 @@ function drawTerrain() {
     if (result.ok) { showToast('Casting pattern swapped.'); renderInventoryIfOpen(); updateHotbar(); state.industryUI?.open(machine.id); }
     else showToast(result.reason);
   });
-  canvas.addEventListener('pointerdown', event => { event.preventDefault(); canvas.setPointerCapture?.(event.pointerId); handleCanvasDown(event); });
+  canvas.addEventListener('pointerdown', event => {
+    event.preventDefault(); canvas.setPointerCapture?.(event.pointerId); handleCanvasDown(event);
+    if (event.button === 0 && state.tool === 'pickaxe' && findAnyMineableDepositHit(state.pointer.x, state.pointer.y)) state.pointer.mining = true;
+  });
   canvas.addEventListener('pointerup', event => { event.preventDefault(); handleCanvasUp(event); });
+  canvas.addEventListener('pointercancel', event => { handleCanvasUp(event); });
   canvas.addEventListener('pointermove', handlePointerMove);
-  canvas.addEventListener('pointerleave', () => { state.pointer.inside = false; state.pointer.down = false; });
+  canvas.addEventListener('pointerleave', () => { state.pointer.inside = false; state.pointer.down = false; state.pointer.mining = false; });
   canvas.addEventListener('contextmenu', event => event.preventDefault());
 
 window.addEventListener('wheel', event => {
@@ -2916,9 +3357,11 @@ window.addEventListener('wheel', event => {
     const key = event.key.toLowerCase();
     if (key === 'tab') { event.preventDefault(); if (!event.repeat) toggleInventory(); return; }
     if (state.inventoryOpen) { if (key === 'escape') toggleInventory(false); return; }
-    if (event.target?.closest?.('button')) return;
+    if (event.target?.closest?.('input, textarea, select, [contenteditable="true"]')) return;
+    if (event.target?.closest?.('button') && key === 'enter') return;
     if (/^[1-9]$/.test(key)) { selectHotbar(Number(key) - 1); return; }
     if (key === 'h' && !event.repeat) { toggleResourceHighlights(); return; }
+    if (key === 't' && !event.repeat) { state.tutorial.active ? closeTutorial() : openTutorial(); return; }
     if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(key)) event.preventDefault();
     keys.add(key);
     if (key === ' ' && !event.repeat) jump();
@@ -2940,6 +3383,4 @@ window.addEventListener('wheel', event => {
   initializeIndustry();
   generateTerrain();
   updateHotbar();
-  showToast('You have stone tools. Press H or use the button to highlight resources.');
-  requestAnimationFrame(frame);
 })();

@@ -33,3 +33,5 @@
   waterwheel.png
 [assets/resources/]
   zinc-deposit.png
+[assets/infrastructure/]
+  brass-channel.png

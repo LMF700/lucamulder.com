@@ -47,9 +47,10 @@ assert.match(game, /function pruneEmptySlots\(\)/);
 assert.match(game, /if \(state\.inventorySelection && !getSlotArray\(state\.inventorySelection\.type\)\[state\.inventorySelection\.index\]\) state\.inventorySelection = null/);
 assert.match(game, /function swapInventorySlots\(sourceType, sourceIndex, targetType, targetIndex\)/);
 assert.match(game, /state\.bagSlots = Array\(27\)\.fill\(null\)/);
-assert.match(html, /HOTBAR · 9 SLOTS/);
+assert.match(html, /aria-label="Hotbar"/);
+assert.match(html, /Hotbar\. Drag or click two slots to swap\./);
 assert.ok(html.indexOf('id=\"inventory-hotbar\"') < html.indexOf('class=\"inventory-layout\"'), 'hotbar should appear before the backpack and crafting content');
-assert.match(html, /BACKPACK · 27 SLOTS/);
+assert.match(html, />Backpack</);
 assert.match(html, /id=\"hotbar-bar\"/);
 assert.doesNotMatch(html, /construction bar/i);
 assert.doesNotMatch(game, /construction bar/i);
@@ -59,7 +60,7 @@ assert.doesNotMatch(reset, /'compass', 'stonePickaxe'/);
 // Resource highlighting supports all requested visible world resources,
 // is keyboard accessible, and does not draw debug hitbox outlines.
 assert.match(html, /id="resource-highlight"/);
-assert.match(html, /HIGHLIGHT RESOURCES · H/);
+assert.match(html, /Highlight Resources \[H\]/i);
 assert.match(css, /\.highlight-button\.active/);
 assert.match(game, /function toggleResourceHighlights\(force = null\)/);
 assert.match(game, /if \(key === 'h' && !event\.repeat\)/);

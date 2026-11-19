@@ -1,6 +1,6 @@
-# Fill The Sea — Industry Engine Prototype (v1.8)
+# Fill The Sea — Industry Engine Prototype (v1.9.1)
 
-This is the current FTS prototype foundation (v1.7), combining the expansive procedural world and exploration systems with an asset-independent industrial simulation. It is a static HTML/CSS/JavaScript project. There is no build step, package installation, server-side code, database, or external API.
+This is the current FTS prototype foundation (v1.9.1), combining the expansive procedural world and exploration systems with an asset-independent industrial simulation. It is a static HTML/CSS/JavaScript project. There is no build step, package installation, server-side code, database, or external API.
 
 ## Run it
 
@@ -84,13 +84,15 @@ The game uses fallbacks for missing art. You can run and test the systems before
 |---|---|
 | A / D or ← / → | Move horizontally along world X (screen X) |
 | W / S or ↑ / ↓ | Move screen-up/down across the projected ground plane, with the oblique Z offset cancelled |
-| Space | Jump up one elevation shelf; walking off a ledge drops you down |
+| Hold Space | Jump, including while moving; keeping it held jumps again as soon as you land |
+| Hold left mouse button with the Stone Pickaxe | Mine repeatedly every 0.5 seconds; deposits with an installed Drill repeat every 0.25 seconds |
 | Tab | Open/close inventory |
 | Drag between any hotbar/backpack slots | Move or swap the slot contents |
 | Click one slot, then another | Move or swap the slot contents |
 | Right-click a hotbar slot in inventory | Move it back to the backpack |
 | Mouse wheel | Cycle available hotbar items |
 | 1–9 | Select a hotbar slot |
+| Click any hotbar slot, including an empty slot | Select that slot |
 | Click a Craft button | Craft the selected inventory recipe when materials and a free slot are available; the open category and scroll position are preserved |
 | Channel construction: click/drag from any terrain point to any other point | Place endpoints freely; yellow dots are optional snap helpers |
 | E | Crouch/stand beneath a completed shelter |
@@ -284,3 +286,21 @@ The test suites cover project assets/registries, movement and world generation, 
 - Dragging a stack to one slot moves/merges it; dragging across multiple compatible slots distributes the stack as evenly as possible, respecting the 64-item stack limit.
 - Right-clicking a compatible machine while holding a matching hotbar item inserts one unit. Accumulator batteries and Casting Machine casts use their dedicated insertion actions.
 - Inventory crafting and the machine Stonecutter interfaces are unchanged.
+
+## v1.9.0 — Into the Deep
+- Added a polished title screen with a direct entry into the existing world.
+- Added an optional synthesized ambient soundtrack and menu chime using the browser Web Audio API; audio starts only after a player gesture.
+- Restyled the menu around the game's square UI frames, pixel-like star accents, lime grass, brown soil, blue water, and yellow highlights.
+- The world loop now starts after selecting Begin, and image files load on demand instead of all at startup.
+- The global terrain-height color range is cached per generated world, avoiding a full elevation scan for every terrain tile drawn.
+- Menu animations use reduced-motion settings and small CSS effects instead of high-cost blur and layered glow filters.
+
+## v1.9.1 — Sea, terrain, and audio fixes
+- The Empty Sea shoreline now supports grounded slope traversal and no longer traps the player on an invisible uphill edge.
+- Terrain samples use fixed world coordinates and camera-derived viewport bounds, so shelves stay aligned as the camera moves. Camera follow is more responsive.
+- The sea renders as one continuous sand-and-water overlay without the terrain's yellow tile grid showing underneath.
+- Replaced the static oscillator drone with a sequenced chord-and-melody soundtrack, richer triangle-wave voices, and a sound toggle that stays available during play.
+- Fixed the Concrete Channel recipe input ID and restored Brass Channel as an equipable crafted channel type.
+- Movement keys continue to work while a menu button has keyboard focus; added footstep, mining, chopping, and jump sound effects.
+- Added `audio-assets/` as the home for composed music and sound files. Jump input buffers briefly so a press just before landing jumps on touchdown, including while moving.
+- Expanded the replayable, skippable field guide to follow the actual crafting and placement chain for the Furnace, Flattener, water channels, Waterwheel, and Drill.

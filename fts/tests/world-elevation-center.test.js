@@ -16,7 +16,7 @@ assert.match(game, /tier: state\.middleTier/, 'basin should record its elevation
 assert.match(game, /x: state\.basin\.x/, 'player should spawn at the same horizontal elevation band as the sea');
 assert.match(game, /z: state\.basin\.z - state\.basin\.rz \* 1\.32/, 'player should spawn just outside the sea shoreline');
 assert.match(game, /const heights = state\.layerBands\.map\(band => band\.height\)/, 'gradient should sample the full generated height range');
-assert.match(game, /let fill = terrainGrassColorAtHeight\(yMid\)/, 'all visible ground cells should use world-height colour');
+assert.match(game, /const fill = terrainGrassColorAtHeight\(yMid\)/, 'all visible ground cells should use world-height colour');
 assert.match(game, /function terrainViewportBounds\(\)/, 'terrain render coverage should be calculated for the viewport');
 assert.match(game, /getTerrainViewportBounds: \(\) => \(\{ \.\.\.terrainViewportBounds\(\) \}\)/, 'viewport coverage should be exposed for validation');
 assert.doesNotMatch(game, /state\.camera\.x - 620|state\.camera\.z - 980/, 'old camera-local terrain patch should be removed');

@@ -10,7 +10,9 @@ assert.ok(game.includes('const desiredScreenX = screenMoveX * screenSpeed;'), 'A
 assert.ok(game.includes('const desiredScreenY = screenMoveY * screenSpeed;'), 'W/S should follow the screen vertical ground-plane axis');
 assert.ok(game.includes('p.vy = 500'), 'jump impulse should be tall enough to climb elevation shelves');
 assert.ok(game.includes('p.vy -= 850 * dt'), 'jump/fall movement should use gravity');
-assert.ok(game.includes('if (newGround > oldFootY + 1.5) return false;'), 'higher terrain should block movement until the player has jumped high enough');
+assert.match(game, /const walkableSlope = 1\.5 \+ moveDistance \* 0\.75/, 'walkable slopes should scale with movement distance');
+assert.match(game, /if \(p\.grounded && Math\.abs\(groundDelta\) <= walkableSlope\)/, 'grounded players should follow gradual slopes without entering a fall state');
+assert.ok(game.includes('if (newGround > oldFootY + 1.5) return false;'), 'steep terrain should still block movement until the player has jumped high enough');
 assert.ok(game.includes('basinSpawnRadius:'), 'world diagnostics should expose basin distance from spawn');
 assert.ok(game.includes('const layerCount = 25;'), '25 layers should create a true middle elevation shelf');
 assert.ok(game.includes('state.middleTier = Math.floor(layerCount / 2);'), 'the central elevation tier should be calculated from the world layer count');
@@ -22,7 +24,7 @@ assert.ok(!game.includes('function drawRamps()'), 'ramp renderer should be remov
 assert.ok(!game.includes('rampAt('), 'ramp traversal should be removed');
 assert.ok(game.includes('state.ramps = [];'), 'generated ramp collection should remain empty');
 assert.ok(game.includes('Math.max(Math.abs(a0 - b0), Math.abs(a1 - b1)) > 22'), 'cliff renderer should draw both rising and falling elevation faces');
-assert.ok(html.includes('No ramps.'), 'game UI should explain the no-ramp traversal');
+assert.match(html, /no ramps\./i, 'game UI should explain the no-ramp traversal');
 
 // Check the inverse projection used by screen-aligned WASD. Each key direction
 // should move on exactly one visible screen axis, without diagonal drift.
@@ -60,5 +62,9 @@ assert.ok(jumpApex > maximumStepWithNoise, 'a full jump should be able to climb 
 const minimumBasinRadiusAtSpawn = Math.hypot(1340 / 1120, 210 / 1440);
 assert.ok(minimumBasinRadiusAtSpawn > 1.18, 'spawn should remain outside the basin rim even at worst-case generation values');
 assert.ok(900 + 1380 + 40 < 3600, 'basin must stay inside the wider starting shelf');
+
+// The basin floor-to-rim transition remains below the grounded walk slope limit.
+const maximumBasinRampGrade = 1.5 * 145 / (0.38 * 980);
+assert.ok(maximumBasinRampGrade < 0.75, 'the Empty Sea shore should be walkable without jumping or collision pushback');
 
 console.log('FTS screen-aligned movement/world regression tests passed.');
